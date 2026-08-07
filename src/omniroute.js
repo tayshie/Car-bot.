@@ -9,10 +9,14 @@ class OmniRouteClient {
   async chat(messages, options = {}) {
     const url = `${this.baseUrl}/v1/chat/completions`;
     
+    const systemContent = options.context
+      ? `${CARL_SYSTEM_PROMPT}\n\n--- THINGS YOU'VE NOTICED AROUND THE SERVER ---\n${options.context}`
+      : CARL_SYSTEM_PROMPT;
+
     const payload = {
       model: options.model || 'auto',
       messages: [
-        { role: 'system', content: CARL_SYSTEM_PROMPT },
+        { role: 'system', content: systemContent },
         ...messages
       ],
       temperature: options.temperature ?? 0.9,
