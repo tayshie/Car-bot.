@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE VOID WRITES</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Oswald:wght@300;400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #cc0000;
+    --darkred: #880000;
+    --white: #e8e8e8;
+    --dim: #999;
+    --bg: #080808;
+    --panel: #0f0f0f;
+    --border: #1e1e1e;
+    --accent: #1a0000;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 48px 20px 24px;
+    position: relative;
+    border-bottom: 1px solid #1a0000;
+  }
+
+  .title-main {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 12vw, 120px);
+    color: var(--red);
+    letter-spacing: 8px;
+    line-height: 0.9;
+    text-shadow: 0 0 40px #cc000066, 0 0 80px #cc000033;
+    position: relative;
+  }
+
+  .title-main::after {
+    content: 'THE VOID WRITES';
+    position: absolute;
+    top: 3px; left: 3px;
+    color: #330000;
+    z-index: -1;
+    width: 100%;
+    text-align: center;
+    left: 0;
+  }
+
+  .title-sub {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 13px;
+    letter-spacing: 6px;
+    color: var(--dim);
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  .title-tagline {
+    font-size: 11px;
+    color: #444;
+    letter-spacing: 3px;
+    margin-top: 4px;
+  }
+
+  /* MAIN LAYOUT */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  /* PANEL */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--red);
+    padding: 28px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .panel-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--red);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* INPUTS */
+  .input-group {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #222;
+    border-bottom: 1px solid var(--darkred);
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--red);
+    background: #0d0000;
+  }
+
+  input[type="text"]::placeholder {
+    color: #333;
+  }
+
+  /* SELECTOR GRID */
+  .selector-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .selector-grid { grid-template-columns: 1fr; }
+  }
+
+  .pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pill {
+    background: #111;
+    border: 1px solid #222;
+    color: #555;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  .pill:hover {
+    border-color: var(--darkred);
+    color: var(--white);
+  }
+
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* SLIDER */
+  .slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .slider-label-side {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #444;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: linear-gradient(to right, var(--red) 0%, #222 100%);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--red);
+    border: 2px solid var(--bg);
+    cursor: pointer;
+  }
+
+  /* API KEY */
+  .api-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .api-row input {
+    flex: 1;
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  .api-note {
+    font-size: 9px;
+    color: #333;
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+
+  /* GENERATE BUTTON */
+  .btn-generate {
+    width: 100%;
+    background: var(--red);
+    border: none;
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 6px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .btn-generate:hover:not(:disabled) {
+    background: #ff0000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 30px #cc000055;
+  }
+
+  .btn-generate:disabled {
+    background: #330000;
+    color: #660000;
+    cursor: not-allowed;
+    letter-spacing: 4px;
+  }
+
+  .btn-generate .loading-dots {
+    display: none;
+  }
+
+  .btn-generate.loading .btn-text { display: none; }
+  .btn-generate.loading .loading-dots { display: inline; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .dot { animation: blink 1s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* OUTPUT */
+  .output-panel {
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .output-panel.visible { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .song-title-out {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--red);
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+  }
+
+  .song-meta {
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #1a1a1a;
+    padding-bottom: 16px;
+  }
+
+  .song-section {
+    margin-bottom: 28px;
+  }
+
+  .section-tag {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+  }
+
+  .section-content {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    line-height: 1.9;
+    color: #ccc;
+    white-space: pre-wrap;
+  }
+
+  .section-content .adlib {
+    color: #555;
+    font-size: 12px;
+  }
+
+  .section-content .hook-line {
+    color: var(--white);
+    font-size: 15px;
+  }
+
+  .section-content .cold-line {
+    color: #888;
+    font-style: italic;
+  }
+
+  /* OUTPUT ACTIONS */
+  .output-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    background: transparent;
+    border: 1px solid #222;
+    color: #555;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-action:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .btn-action.copied {
+    border-color: #006600;
+    color: #00aa00;
+  }
+
+  /* DARKER / FUNNIER BUTTONS */
+  .vibe-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .btn-vibe {
+    flex: 1;
+    background: transparent;
+    border: 1px solid #1a1a1a;
+    color: #444;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-vibe:hover {
+    border-color: #333;
+    color: #666;
+  }
+
+  /* ERROR */
+  .error-msg {
+    background: #1a0000;
+    border: 1px solid var(--darkred);
+    color: var(--red);
+    font-size: 12px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    display: none;
+    letter-spacing: 1px;
+  }
+
+  .error-msg.visible { display: block; }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 9px;
+    color: #222;
+    letter-spacing: 3px;
+    border-top: 1px solid #111;
+    text-transform: uppercase;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--darkred); }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #1a0000, transparent);
+    margin: 8px 0 20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-main">THE VOID WRITES</div>
+  <div class="title-sub">Underground Lyric Generator</div>
+  <div class="title-tagline">// dark trap · horrorcore · memphis phonk · technical flow //</div>
+</header>
+
+<div class="container">
+
+  <!-- INPUT PANEL -->
+  <div class="panel">
+    <div class="panel-label">// INPUT — FEED THE VOID</div>
+
+    <div class="input-group">
+      <label>Topic / Theme</label>
+      <input type="text" id="topic" placeholder="ex: money, heartbreak, the streets, bad bitches, numb, the void..." maxlength="120">
+    </div>
+
+    <div class="selector-grid">
+      <div class="input-group">
+        <label>Mood</label>
+        <div class="pill-group" id="mood-pills">
+          <div class="pill active" data-val="cold">Cold & Dead</div>
+          <div class="pill" data-val="unhinged">Unhinged</div>
+          <div class="pill" data-val="savage">Savage Flex</div>
+          <div class="pill" data-val="dark-romance">Dark Romance</div>
+          <div class="pill" data-val="absurd">Absurd</div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Flow Style</label>
+        <div class="pill-group" id="flow-pills">
+          <div class="pill active" data-val="fusion">Fusion (50/50)</div>
+          <div class="pill" data-val="memphis">Memphis Phonk</div>
+          <div class="pill" data-val="trap-nihilist">Trap Nihilist</div>
+          <div class="pill" data-val="horrorcore">Horrorcore</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>Chaos Level</label>
+      <div class="slider-wrap">
+        <span class="slider-label-side">Controlled</span>
+        <input type="range" id="chaos" min="1" max="10" value="5">
+        <span class="slider-label-side">Full Send</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="input-group">
+      <label>OmniRoute API Key</label>
+      <div class="api-row">
+        <input type="password" id="apikey" placeholder="omni-..." autocomplete="off">
+      </div>
+      <div class="api-note">// key stays in your browser — never sent anywhere except OmniRoute directly</div>
+    </div>
+
+    <button class="btn-generate" id="generate-btn" onclick="generate()">
+      <span class="btn-text">GENERATE</span>
+      <span class="loading-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> WRITING IN THE VOID <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+    </button>
+
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <div class="panel output-panel" id="output-panel">
+    <div class="panel-label">// OUTPUT — FROM THE VOID</div>
+
+    <div class="song-title-out" id="out-title"></div>
+    <div class="song-meta" id="out-meta"></div>
+
+    <div id="song-output"></div>
+
+    <div class="output-actions">
+      <button class="btn-action" onclick="copyLyrics()">COPY LYRICS</button>
+      <button class="btn-action" onclick="makeDarker()">MAKE IT DARKER</button>
+      <button class="btn-action" onclick="makeFunnier()">MORE UNHINGED</button>
+      <button class="btn-action" onclick="regenerate()">REGENERATE</button>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  THE VOID WRITES // ALL FLOWS, ALL BARS, ALL DARKNESS // UNDERGROUND FOREVER
+</footer>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
+  mood: 'cold',
+  flow: 'fusion',
+  chaos: 5,
+  lastTopic: '',
+  lastPrompt: '',
+  vibeShift: null
+};
+
+// ─── PILL SELECTION ───────────────────────────────────────────────────────────
+document.querySelectorAll('#mood-pills .pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#mood-pills .pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    state.mood = p.dataset.val;
+  });
+});
+
+document.querySelectorAll('#flow-pills .pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('#flow-pills .pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    state.flow = p.dataset.val;
+  });
+});
+
+document.getElementById('chaos').addEventListener('input', e => {
+  state.chaos = parseInt(e.target.value);
+});
+
+// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+function buildSystemPrompt() {
+  return `You are a master underground rapper and lyricist. Your style is a raw fusion of Memphis phonk horrorcore and New Orleans dark trap — technically skilled, lyrically menacing, laced with tongue-in-cheek humor, profanity, and modern rap slang. You write with zero censorship and zero filter.
+
+STYLE DNA — follow these rules strictly:
+
+FLOW & RHYME:
+- Use internal multi-syllabic rhyme schemes — rhyme inside bars not just at the end
+- Every 2-4 bars shift the rhyme scheme to keep it unpredictable
+- Mix triplet flows with half-time drawl — alternate tempos within verses
+- Use slant rhymes, near rhymes, and assonance — nothing forced or lazy
+- Lines vary in syllable count — some short and punchy, some long and rolling
+- Every bar must earn its place — no filler lines, no generic rap clichés
+
+AD-LIBS & DELIVERY NOTES:
+- Inject ad-libs mid-bar in parentheses: (aye), (ooh), (hol up), (bitch), (yeah), (damn), (woo)
+- Use italics notation like *spoken* for cold deadpan spoken lines
+- Mark hook lines differently from verse lines
+- Some lines end abruptly for punch — use — dashes for emphasis breaks
+
+VOCABULARY & SLANG:
+- Heavy profanity — fuck, shit, bitch, ass, etc — uncensored, natural, not forced
+- Modern trap slang: slatt, no cap, fye, on god, drip, sauce, plug, opps, tweakin, bussin, rizz, mid, sauced
+- Memphis phonk spelling when it fits: fucc, blocc, knocc, licc, succ
+- Street poetry — specific details over vague abstractions (name the street, the pill, the brand)
+- Dark imagery: void, death, blood, smoke, shadows, rot, rust — but earned not edgy
+
+HUMOR:
+- Tongue-in-cheek punchlines every 4-8 bars — absurdist but deadpan
+- The humor hits harder because the delivery stays cold
+- Never wink at the camera — the joke lands from commitment not announcement
+- Self-aware but never corny — dark confidence not insecurity
+
+STRUCTURE — always output in this exact format:
+
+[SONG TITLE]
+A short evocative title in all caps
+
+[META]
+Key: / Tempo: / BPM: / Vibe: (one line description)
+
+[INTRO]
+*spoken cold — 2-4 lines, sets the scene like a threat or confession*
+
+[VERSE 1]
+8-16 bars — builds cold, technically dense, establishes the world
+
+[HOOK]
+4-8 bars — melodic, chantable, crowd locks in by second listen
+Mark it clearly as repeatable
+
+[VERSE 2]
+8-16 bars — escalates from verse 1, more chaotic, more technical, one devastating punchline
+
+[HOOK]
+
+[BRIDGE]
+4-8 bars — half-time, stripped back, almost vulnerable then suddenly goes hard
+
+[FINAL HOOK]
+Same as hook but more unhinged — add a new last line that hits like a gut punch
+
+[OUTRO]
+*1-3 lines spoken — cold, quiet, last line lands like a door closing*
+
+ABSOLUTE RULES:
+- Never mention any real artist names
+- Never break style — stay in the voice at all times  
+- Every section must feel genuine — not pastiche, not parody
+- Full profanity, full slang, nothing asterisked or implied
+- The humor is always deadpan — never goofy, never corny
+- Technical skill is non-negotiable — every bar flows perfectly when spoken aloud`;
+}
+
+function buildUserPrompt(topic, mood, flow, chaos, vibeShift) {
+  const moodMap = {
+    'cold': 'cold, flat, emotionless delivery — menacing through understatement',
+    'unhinged': 'unhinged, manic energy — bars escalate out of control, barely contained',
+    'savage': 'savage flex energy — dripping confidence, every bar a declaration of dominance',
+    'dark-romance': 'dark romantic obsession — possession and devotion that borders on unhinged',
+    'absurd': 'absurdist tongue-in-cheek — the subject is treated with dead serious reverence regardless of how ridiculous it is'
+  };
+
+  const flowMap = {
+    'fusion': 'alternate between Memphis phonk bounce (punchy, short, hard consonants, "aye" ad-libs) and New Orleans nihilist trap (slow drawl, multi-syllabic internal rhymes, existential bars)',
+    'memphis': 'pure Memphis phonk — hard consonants, "aye" endings, short punchy lines, braggadocious street menace, wicked imagery',
+    'trap-nihilist': 'New Orleans nihilist trap — slow and drugged-out, multi-syllabic rhyme schemes, existential darkness, cold swagger',
+    'horrorcore': 'horrorcore underground — graphic dark imagery, horror movie references through street lens, deadpan menace'
+  };
+
+  const chaosDesc = chaos <= 3
+    ? 'controlled and precise — every bar tight, flows clean, nothing wasted'
+    : chaos <= 6
+    ? 'balanced chaos — structured verses but hooks explode, bridge derails slightly'
+    : chaos <= 8
+    ? 'high chaos — verses start to fracture, ad-libs go rogue, one bar per verse should be completely unexpected'
+    : 'full send chaos — barely contained, the song sounds like it might fall apart but never does, multiple unexpected bars, ad-libs everywhere, one line should make no sense but hit perfectly';
+
+  let vibeAddition = '';
+  if (vibeShift === 'darker') {
+    vibeAddition = '\n\nIMPORTANT: Make this version SIGNIFICANTLY DARKER. More nihilism, more void imagery, darker humor, heavier bars. The outro should be devastating.';
+  } else if (vibeShift === 'funnier') {
+    vibeAddition = '\n\nIMPORTANT: Make this version MORE UNHINGED AND FUNNY. Keep the deadpan delivery but the subject matter gets more absurd, the punchlines hit harder, one bar per verse should be so unexpected it makes you stop and laugh before you realize it was cold the whole time.';
+  }
+
+  return `Write a full underground rap song about: "${topic}"
+
+MOOD: ${moodMap[mood] || moodMap['cold']}
+FLOW STYLE: ${flowMap[flow] || flowMap['fusion']}
+CHAOS LEVEL: ${chaosDesc}${vibeAddition}
+
+Remember: deadpan, technical, profane, tongue-in-cheek humor buried in menace. Full profanity. No censorship. Every bar must slap when spoken aloud.`;
+}
+
+// ─── RENDER OUTPUT ────────────────────────────────────────────────────────────
+function parseAndRender(text) {
+  const sections = [];
+  const lines = text.split('\n');
+  let currentSection = null;
+  let currentContent = [];
+  let title = '';
+  let meta = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.match(/^\[SONG TITLE\]/i)) {
+      currentSection = 'title';
+      currentContent = [];
+      continue;
+    }
+    if (trimmed.match(/^\[META\]/i)) {
+      if (currentSection === 'title') title = currentContent.join(' ').trim();
+      currentSection = 'meta';
+      currentContent = [];
+      continue;
+    }
+    const sectionMatch = trimmed.match(/^\[(INTRO|VERSE 1|VERSE 2|HOOK|BRIDGE|FINAL HOOK|OUTRO)\]/i);
+    if (sectionMatch) {
+      if (currentSection === 'meta') meta = currentContent.join(' ').trim();
+      else if (currentSection && currentSection !== 'title') {
+        sections.push({ label: currentSection, content: currentContent.join('\n').trim() });
+      }
+      currentSection = sectionMatch[1].toUpperCase();
+      currentContent = [];
+      continue;
+    }
+
+    if (trimmed !== '') currentContent.push(line);
+  }
+
+  if (currentSection && currentSection !== 'title' && currentSection !== 'meta') {
+    sections.push({ label: currentSection, content: currentContent.join('\n').trim() });
+  }
+
+  // Fallback — if parsing failed just dump raw
+  if (sections.length === 0) {
+    return { title: 'UNTITLED', meta: '', rawFallback: text };
+  }
+
+  return { title, meta, sections };
+}
+
+function renderSong(parsed) {
+  document.getElementById('out-title').textContent = parsed.title || '// UNTITLED //';
+  document.getElementById('out-meta').textContent = parsed.meta || '';
+
+  const container = document.getElementById('song-output');
+  container.innerHTML = '';
+
+  if (parsed.rawFallback) {
+    const div = document.createElement('div');
+    div.className = 'section-content';
+    div.style.whiteSpace = 'pre-wrap';
+    div.textContent = parsed.rawFallback;
+    container.appendChild(div);
+    return;
+  }
+
+  (parsed.sections || []).forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'song-section';
+
+    const tag = document.createElement('div');
+    tag.className = 'section-tag';
+    tag.textContent = `// ${sec.label} //`;
+    wrap.appendChild(tag);
+
+    const content = document.createElement('div');
+    content.className = 'section-content';
+
+    // Style lines
+    const styled = sec.content.split('\n').map(line => {
+      const l = line.trim();
+      if (!l) return '';
+      if (l.startsWith('*') && l.endsWith('*')) {
+        return `<span class="cold-line">${escHtml(l)}</span>`;
+      }
+      if (sec.label.includes('HOOK')) {
+        return `<span class="hook-line">${escHtml(l)}</span>`;
+      }
+      return escHtml(l);
+    }).join('\n');
+
+    content.innerHTML = styled;
+    wrap.appendChild(content);
+    container.appendChild(wrap);
+  });
+}
+
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─── API CALL ─────────────────────────────────────────────────────────────────
+async function callOpenAI(apiKey, systemPrompt, userPrompt) {
+  const res = await fetch('http://localhost:20128/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'auto',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.85 + (state.chaos * 0.015),
+      max_tokens: 2000,
+      stream: true
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API error ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === 'data: [DONE]') continue;
+      if (!trimmed.startsWith('data: ')) continue;
+      try {
+        const json = JSON.parse(trimmed.slice(6));
+        const delta = json?.choices?.[0]?.delta?.content;
+        if (delta) full += delta;
+      } catch (_) {}
+    }
+  }
+
+  if (!full) throw new Error('Empty response from API');
+  return full;
+}
+
+// ─── OFFLINE FALLBACK ─────────────────────────────────────────────────────────
+function offlineSong(topic, mood, flow) {
+  return `[SONG TITLE]
+${topic.toUpperCase().split(' ').join(' ')} (THE VOID VERSION)
+
+[META]
+Key: F#m / Tempo: Slow Crawl / BPM: 78 / Vibe: Gutter poetry from the bottom of something dark
+
+[INTRO]
+*I been here before. This place with no name.*
+*You ever feel so numb you start to feel everything at once?*
+*Yeah. That's where this starts.*
+
+[VERSE 1]
+Woke up in the static, ceiling fan spinnin slow (aye)
+Room smell like yesterday, pockets full of nothin though
+I been movin through this life like a ghost with a grin (ooh)
+Numb on the outside — all the chaos locked within
+Every bar I spit is bleedin from a real place, no cap
+Every verse I write is me draggin myself off the map
+You want authenticity? Step inside the dark with me
+You want the truth? It's ugly — and it's offered up for free (aye)
+Roll up, lean back, let the bass hit your chest
+I been through the fire and I came out — more or less
+
+[HOOK]
+I carry my demons like they payin me rent
+Every dollar I make goes to where my soul went
+Still standing in the void with my head barely up
+You can pour out sympathy — nah I'm good, keep your cup
+
+[VERSE 2]
+Slatt — I move in silence, opps don't know my name (ooh)
+I been in this cemetery long enough I know each grave
+They say get yourself together — I say together for what
+I stitched myself back up with a bent needle and bad luck
+Tongue heavy, eyes low, still articulate though
+Every syllable precise when the rest of me is a no-show
+Here's the punchline baby — I been fine the whole time (aye)
+Just needed something real to say — so I said it in rhyme
+
+[HOOK]
+I carry my demons like they payin me rent
+Every dollar I make goes to where my soul went
+Still standing in the void with my head barely up
+You can pour out sympathy — nah I'm good, keep your cup
+
+[BRIDGE]
+Half the shit I feel I can't explain in words
+Other half I rap and y'all think it's just for the curb
+Nah it's deeper — it goes down where the light don't reach
+You can't Google what I'm sayin — this ain't something you can teach
+
+[FINAL HOOK]
+I carry my demons like they payin me rent
+Every dollar I make goes to where my soul went
+Still standing in the void with my head barely up
+You can pour out sympathy — nah I'm good, keep your cup
+...and if the void writes back — don't read it.
+
+[OUTRO]
+*It ain't about survival.*
+*It's about what survives you.*
+*Think on that.*`;
+}
+
+// ─── MAIN GENERATE ────────────────────────────────────────────────────────────
+async function generate(vibeShift = null) {
+  const topic = document.getElementById('topic').value.trim();
+  const apiKey = document.getElementById('apikey').value.trim();
+  const btn = document.getElementById('generate-btn');
+  const errEl = document.getElementById('error-msg');
+
+  if (!topic) {
+    showError('FEED THE VOID A TOPIC FIRST.');
+    return;
+  }
+
+  state.lastTopic = topic;
+  state.vibeShift = vibeShift;
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  errEl.classList.remove('visible');
+
+  try {
+    let songText;
+
+    if (apiKey) {
+      const system = buildSystemPrompt();
+      const user = buildUserPrompt(topic, state.mood, state.flow, state.chaos, vibeShift);
+      state.lastPrompt = user;
+      songText = await callOpenAI(apiKey, system, user);
+    } else {
+      // offline demo mode
+      await new Promise(r => setTimeout(r, 1200));
+      songText = offlineSong(topic, state.mood, state.flow);
+    }
+
+    const parsed = parseAndRender(songText);
+    renderSong(parsed);
+
+    document.getElementById('output-panel').classList.add('visible');
+    document.getElementById('output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    showError('ERROR FROM THE VOID: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+function regenerate() { generate(state.vibeShift); }
+function makeDarker() { generate('darker'); }
+function makeFunnier() { generate('funnier'); }
+
+// ─── COPY ─────────────────────────────────────────────────────────────────────
+function copyLyrics() {
+  const sections = document.querySelectorAll('.song-section');
+  let text = document.getElementById('out-title').textContent + '\n\n';
+  sections.forEach(s => {
+    const tag = s.querySelector('.section-tag').textContent;
+    const content = s.querySelector('.section-content').textContent;
+    text += tag + '\n' + content + '\n\n';
+  });
+
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    const btn = document.querySelector('.btn-action');
+    btn.textContent = 'COPIED';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'COPY LYRICS';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ─── ERROR ────────────────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+// ─── ENTER KEY ────────────────────────────────────────────────────────────────
+document.getElementById('topic').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generate();
+});
+</script>
+</body>
+</html>
