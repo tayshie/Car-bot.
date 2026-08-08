@@ -27,10 +27,24 @@ Hey. Carl here. 2 Wycked's in the shop, Foreigner's on the stereo, and I've been
 - /whois <domain> — who registered it, when, when it expires
 - /pwned <password> — I check if your password's been leaked (nobody sees this, only you)
 
+**UTILITIES**
+- /reminder <when> <what> — I remind the whole channel ("2h", "30m", "tomorrow")
+- /deadline <when> <task> — set a deadline, I'll nag ya until it's done
+- /deadlines — list open deadlines; /done <id> — mark one done
+- /bill-split <amount> <count> [tip] — who owes what, down to the cent
+- /birthday <date> — register yours; /birthdays — see everyone's
+- /nickname <@user> <name> — I rename people
+- /topic — random bar-stool conversation starter
+- /quote <@user> [tag] — I save someone's words; /quotes [tag] — recall 'em
+- /translate <text> [lang] — I mangle it into another language
+- /unit <value> <from> <to> — conversions (100 km to miles, 8 oz to ml)
+- /countdown <when> [label] — days/hours until somethin'
+
 **QUIRKS**
 - I randomly hype up games in #main-chat and tell you to bet
 - I randomly drop gossip I overheard — yeah, I heard what you said in that other channel
 - Say the right words (beer, Giants, Melon Shakers...) and I'll chime in
 - I sometimes react to messages like a gremlin
+- I announce birthdays, nag deadlines, and remember everything you say
 
 Bet responsibly. The Giants are gonna lose. Don't tell 'em I said so.

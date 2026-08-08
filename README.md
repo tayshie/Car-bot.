@@ -2,14 +2,49 @@
 
 A Discord bot that embodies **Carl Brutananadilewski** from Aqua Teen Hunger Force, powered by **OmniRoute** (OpenAI-compatible AI gateway).
 
+Carl's a server insider. He watches everything, remembers everything, bets on games, and will absolutely roast you where you stand.
+
 ## Features
 
-- **Full Carl Personality**: Vulgar, misanthropic, classic rock loving, Giants/Yankees fan, alcoholic neighbor who's died 70+ times
+### Personality & Chat
+- **Full Carl Persona**: Vulgar, misanthropic, classic-rock loving, Giants/Yankees fan, alcoholic neighbor who's died 70+ times
 - **OmniRoute Integration**: Uses any LLM provider through OmniRoute's unified API
-- **Conversation Memory**: Maintains context per channel
-- **Slash Commands**: `/carl`, `/reset`, `/deaths`, `/car`, `/music`
-- **Random Interjections**: 3% chance to chime in unprompted
-- **Mention Response**: Always replies when @mentioned
+- **Channel Memory**: Tracks conversation per channel
+- **Server Insider**: Logs every message server-wide and backfills channel history on boot (`data/lore.json`) — Carl knows what people say in other channels
+- **Context Awareness**: When Carl replies, he's fed recent channel activity + what that person's been up to elsewhere
+- **Random Gossip**: On his own schedule, Carl volunteers insider knowledge he "overheard" (`GOSSIP_MIN_HOURS`/`GOSSIP_MAX_HOURS`)
+- **Keyword Triggers**: Mentions of beer, the Giants, Melon Shakers, classic rock etc. get Carl to chime in
+- **Random Reactions**: Occasionally reacts to messages (8% chance, per-channel cooldown)
+
+### Sports & Carl Coins
+- **Live Scores**: NFL, NBA, MLB, UFC/MMA from ESPN (no key required)
+- **Real Betting Lines**: Moneyline/spread/totals from The Odds API
+- **Carl Coin Economy**: Persistent balances, daily claims, leaderboard
+- **Betting**: Place bets with Carl Coins, auto-settled from real game results, winners DM'd
+
+### Server Tools
+- **/shade [@user]** — secret command (ephemeral). Carl publicly roasts and pings people so it looks random. Only the caller sees the trigger.
+- **/lookup** — search recent server history for people/events
+- **/profile** — member dossier (status, roles, join dates)
+- **/nickname** — Carl renames people
+- **/topic** — bar-stool conversation starter
+
+### OSINT
+- **/search** — web search through OmniRoute, summarized in Carl's voice
+- **/ip** — IP geolocation, ISP, ASN
+- **/dns** — A/AAAA/MX/NS/TXT/CNAME records
+- **/whois** — registrar, dates, nameservers, status
+- **/pwned** — password breach check (ephemeral, k-anonymity; only the SHA-1 prefix leaves the machine)
+
+### Utilities
+- **/reminder** — channel-wide reminder (relative time: "2h", "30m", "tomorrow")
+- **/deadline** — persistent deadline Carl nags about (at 1hr-to-go, then every hour overdue); **/deadlines**, **/done**
+- **/bill-split** — split bills with tip, down to the cent
+- **/birthday /birthdays** — server birthday registry, announced in-channel
+- **/quote /quotes** — save and recall people's messages
+- **/translate** — translation through OmniRoute
+- **/unit** — conversions (length/mass/volume/speed/temp, incl. beers)
+- **/countdown** — days/hours until a date
 
 ## Setup
 
@@ -17,6 +52,7 @@ A Discord bot that embodies **Carl Brutananadilewski** from Aqua Teen Hunger For
 - Node.js 18+
 - Discord Bot Token (from [Discord Developer Portal](https://discord.com/developers/applications))
 - OmniRoute running locally or remotely with API key
+- The Odds API key (optional, for real betting lines): https://the-odds-api.com
 
 ### 2. Install OmniRoute
 ```bash
@@ -35,20 +71,80 @@ cp .env.example .env
 # Edit .env with your tokens
 ```
 
-### 4. Run
+### 4. Register Slash Commands
+```bash
+npm run deploy
+```
+With `GUILD_ID` set, commands register instantly for that guild. Without it, they register globally (can take up to an hour).
+
+### 5. Run
 ```bash
 npm start
 ```
 
+### Discord Permissions
+Invite the bot with `applications.commands` scope and the following permissions:
+- Read Messages / View Channels
+- Send Messages
+- Manage Nicknames (for `/nickname`)
+- Read Message History (for lore backfill, /lookup)
+- Add Reactions
+- Embed Links
+
 ## Slash Commands
 
+### Talking
 | Command | Description |
 |---------|-------------|
-| `/carl [prompt]` | Ask Carl something |
-| `/reset` | Clear conversation history |
+| `/carl [prompt]` | Ask Carl something directly |
+| `/reset` | Clear Carl's memory in this channel |
 | `/deaths` | Carl's death count |
 | `/car` | About 2 Wycked |
 | `/music` | Classic rock talk |
+
+### Sports & Money
+| Command | Description |
+|---------|-------------|
+| `/games [sport]` | Today's games and scores (nfl/nba/mlb/mma) |
+| `/odds [sport]` | Betting lines right now |
+| `/bet <sport> <team> <amount>` | Wager Carl Coins on a game |
+| `/balance` | Your Carl Coin balance |
+| `/claim` | Daily Carl Coin handout |
+| `/leaderboard` | Richest bastards in the server |
+
+### Server Insider
+| Command | Description |
+|---------|-------------|
+| `/shade [@user]` | Secretly make Carl trash-talk someone (ephemeral trigger, public roast) |
+| `/lookup <query>` | Search server history for people/events |
+| `/profile [@user]` | Member dossier |
+| `/nickname <@user> <name>` | Rename someone |
+
+### OSINT
+| Command | Description |
+|---------|-------------|
+| `/search <query>` | Web search, Carl style |
+| `/ip <ip>` | IP geolocation |
+| `/dns <domain>` | DNS records |
+| `/whois <domain>` | Registration info |
+| `/pwned <password>` | Breach check (ephemeral) |
+
+### Utilities
+| Command | Description |
+|---------|-------------|
+| `/reminder <when> <what>` | Channel-wide reminder |
+| `/deadline <when> <task>` | Set a nagging deadline |
+| `/deadlines` | List open deadlines |
+| `/done <id>` | Mark a deadline done |
+| `/bill-split <amount> <count> [tip]` | Split a bill |
+| `/birthday <date>` | Register your birthday |
+| `/birthdays` | List birthdays |
+| `/topic` | Conversation starter |
+| `/quote <@user> [tag]` | Save a quote |
+| `/quotes [tag]` | Show saved quotes |
+| `/translate <text> [lang]` | Translate |
+| `/unit <value> <from> <to>` | Unit conversion |
+| `/countdown <when> [label]` | Countdown to a date |
 
 ## Carl's Personality
 
@@ -70,7 +166,20 @@ Carl: More Than a Feeling. Boston. Greatest song ever written. I seen 'em live. 
 
 User: /car
 Carl: 2 Wycked. Red Dodge Stealth ES. Spoiler. Chrome rims. Fake hood intake. Stolen 47 times. Current status: probably on blocks in Newark.
+
+User: /unit 100 km to miles
+Carl: 100 km = **62.14 miles** (length)
 ```
+
+## Data Storage
+
+| File | Contents |
+|------|----------|
+| `data/lore.json` | Server message memory (all channels, per-user) |
+| `data/carlcoin.json` | Carl Coin balances and active bets |
+| `data/records.json` | Deadlines, birthdays, saved quotes |
+
+All data is local and excluded from git via `.gitignore`.
 
 ## Environment Variables
 
@@ -80,6 +189,38 @@ Carl: 2 Wycked. Red Dodge Stealth ES. Spoiler. Chrome rims. Fake hood intake. St
 | `OMNIROUTE_URL` | No | OmniRoute base URL (default: http://localhost:20128) |
 | `OMNIROUTE_KEY` | Yes | API key from OmniRoute dashboard |
 | `OWNER_ID` | No | Your Discord user ID |
+| `GUILD_ID` | No | Guild ID for instant slash command registration |
+| `ODDS_API_KEY` | No | The Odds API key for real betting lines |
+| `ANNOUNCE_CHANNEL_ID` | No | Channel for game hype + gossip + birthday announcements |
+| `CARL_COIN_START` | No | Starting coins (default 1000) |
+| `CARL_COIN_CLAIM` | No | Daily claim amount (default 100) |
+| `ANNOUNCE_MIN_HOURS` | No | Min hours between game hype (default 2) |
+| `ANNOUNCE_MAX_HOURS` | No | Max hours between game hype (default 5) |
+| `RESOLVE_MINUTES` | No | How often to settle bets (default 5) |
+| `GOSSIP_MIN_HOURS` | No | Min hours between gossip drops (default 2) |
+| `GOSSIP_MAX_HOURS` | No | Max hours between gossip drops (default 6) |
+
+## Project Structure
+
+```
+ARL/
+├── scripts/
+│   └── deploy-commands.js   # Slash command registration
+├── src/
+│   ├── index.js             # Main bot
+│   ├── omniroute.js         # OmniRoute chat client
+│   ├── carlPrompt.js        # Carl's system prompt
+│   ├── sports.js            # ESPN scores + Odds API
+│   ├── store.js             # Carl Coin persistence
+│   ├── lore.js              # Server memory
+│   ├── serverlore.js        # History search + profiles
+│   ├── osint.js             # Web search + IP/DNS/WHOIS/pwned
+│   ├── records.js           # Deadlines, birthdays, quotes
+│   └── utility.js           # Time parsing, unit conversion
+├── data/                    # Local data (gitignored)
+├── CARL-INFO.md             # Share-ready command list
+└── .env.example
+```
 
 ## Deploying
 
