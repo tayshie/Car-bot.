@@ -1,9 +1,30 @@
 import { CARL_SYSTEM_PROMPT } from './carlPrompt.js';
 
+const ERROR_HINTS = [
+  'model does not exist',
+  'model not found',
+  'invalid model',
+  'api key',
+  'unauthorized',
+  'rate limit',
+  'rate_limit',
+  'insufficient balance',
+  'upstream',
+  'provider error',
+  'bad request',
+];
+
+export function looksLikeError(text) {
+  if (!text) return false;
+  const t = String(text).toLowerCase();
+  return ERROR_HINTS.some((h) => t.includes(h));
+}
+
 class OmniRouteClient {
-  constructor(baseUrl, apiKey) {
+  constructor(baseUrl, apiKey, defaultModel = 'auto/best-chat') {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.apiKey = apiKey;
+    this.defaultModel = defaultModel;
   }
 
   async chat(messages, options = {}) {
@@ -14,7 +35,7 @@ class OmniRouteClient {
       : CARL_SYSTEM_PROMPT;
 
     const payload = {
-      model: options.model || 'auto',
+      model: options.model || this.defaultModel,
       messages: [
         { role: 'system', content: systemContent },
         ...messages
@@ -40,7 +61,11 @@ class OmniRouteClient {
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || '...';
+    const content = data.choices?.[0]?.message?.content;
+    if (looksLikeError(content)) {
+      throw new Error(`OmniRoute returned an error message: ${content.slice(0, 300)}`);
+    }
+    return content || '...';
   }
 
   async listModels() {

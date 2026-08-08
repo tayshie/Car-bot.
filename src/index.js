@@ -8,9 +8,11 @@ import * as serverlore from './serverlore.js';
 import * as lore from './lore.js';
 import * as utility from './utility.js';
 import * as records from './records.js';
+import * as logger from './logger.js';
 
 const OMNIROUTE_URL = process.env.OMNIROUTE_URL || 'http://localhost:20128';
 const OMNIROUTE_KEY = process.env.OMNIROUTE_KEY;
+const OMNIROUTE_MODEL = process.env.OMNIROUTE_MODEL || 'auto/best-chat';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const ANNOUNCE_CHANNEL_ID = process.env.ANNOUNCE_CHANNEL_ID || null;
 const CARL_COIN_START = Number(process.env.CARL_COIN_START || 1000);
@@ -30,7 +32,7 @@ if (!OMNIROUTE_KEY) {
   console.warn('OMNIROUTE_KEY not set - bot will not be able to respond');
 }
 
-const omniroute = new OmniRouteClient(OMNIROUTE_URL, OMNIROUTE_KEY);
+const omniroute = new OmniRouteClient(OMNIROUTE_URL, OMNIROUTE_KEY, OMNIROUTE_MODEL);
 
 const client = new Client({
   intents: [
@@ -133,7 +135,7 @@ function scheduleAnnounce() {
     try {
       await announceGame();
     } catch (error) {
-      console.error('announce error:', error.message);
+      logger.error('announce error:', error.message);
     }
     scheduleAnnounce();
   }, delay);
@@ -167,7 +169,7 @@ function scheduleGossip() {
     try {
       await gossipDig();
     } catch (error) {
-      console.error('gossip error:', error.message);
+      logger.error('gossip error:', error.message);
     }
     scheduleGossip();
   }, delay);
@@ -218,18 +220,18 @@ async function notifyResult(bet) {
 }
 
 client.once(Events.ClientReady, (readyClient) => {
-  console.log(`Logged in as ${readyClient.user.tag}`);
-  console.log(`OmniRoute: ${OMNIROUTE_URL}`);
+  logger.log(`Logged in as ${readyClient.user.tag}`);
+  logger.log(`OmniRoute: ${OMNIROUTE_URL} | model: ${OMNIROUTE_MODEL}`);
   client.user.setActivity('2 Wycked | Foreigner | Giants', { type: 2 });
 
   const chan = getAnnounceChannel();
   if (chan) {
-    console.log(`Carl Coin game announcements go to #${chan.name} (${chan.id})`);
+    logger.log(`Carl Coin game announcements go to #${chan.name} (${chan.id})`);
     if (!ANNOUNCE_CHANNEL_ID) {
-      console.log('Set ANNOUNCE_CHANNEL_ID in .env to pin the channel.');
+      logger.log('Set ANNOUNCE_CHANNEL_ID in .env to pin the channel.');
     }
   } else {
-    console.warn('No announce channel found - random game announcements disabled.');
+    logger.error('No announce channel found - random game announcements disabled.');
   }
 
   scheduleAnnounce();
@@ -244,7 +246,7 @@ client.once(Events.ClientReady, (readyClient) => {
 
   for (const guild of readyClient.guilds.cache.values()) {
     lore.backfill(readyClient, guild).catch((error) =>
-      console.error('backfill error:', error.message)
+      logger.error('backfill error:', error.message)
     );
   }
 });
@@ -282,7 +284,7 @@ async function checkDeadlines() {
     try {
       await channel.send({ content: msg, allowedMentions: { parse: ['users'] } });
     } catch (error) {
-      console.error('deadline nag error:', error.message);
+      logger.error('deadline nag error:', error.message);
     }
   }
 }
@@ -346,7 +348,7 @@ async function handleChatReply(message) {
       await message.reply({ content: response, allowedMentions: { repliedUser: false } });
     }
   } catch (error) {
-    console.error('OmniRoute error:', error);
+    logger.error('OmniRoute error:', error.message);
     const errors = [
       "OmniRoute's takin a shit. Try again later.",
       "The goddamn API's down. Like my car. Always broken.",
@@ -833,7 +835,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           allowedMentions: { parse: [] },
         });
       } catch (error) {
-        console.error('reminder send error:', error.message);
+        logger.error('reminder send error:', error.message);
       }
     }, Math.max(0, delay));
     return;
@@ -1132,17 +1134,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!canPost(dest)) {
           dest = getAnnounceChannel();
           if (!canPost(dest)) {
-            console.error('shade: no channel available with Send Messages permission');
+            logger.error('shade: no channel available with Send Messages permission');
             return;
           }
         }
         await dest.send({ content, allowedMentions: { parse: ['users'] } });
       } catch (error) {
-        console.error('shade send error:', error.message);
+        logger.error('shade send error:', error.message);
       }
     }, delay);
     return;
   }
 });
 
-client.login(DISCORD_TOKEN).catch(console.error);
+client.login(DISCORD_TOKEN).catch((e) => logger.error('Login failed:', e.message));

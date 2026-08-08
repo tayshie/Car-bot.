@@ -188,6 +188,7 @@ All data is local and excluded from git via `.gitignore`.
 | `DISCORD_TOKEN` | Yes | Bot token from Discord Developer Portal |
 | `OMNIROUTE_URL` | No | OmniRoute base URL (default: http://localhost:20128) |
 | `OMNIROUTE_KEY` | Yes | API key from OmniRoute dashboard |
+| `OMNIROUTE_MODEL` | No | Model to use (default: auto/best-chat). Valid options depend on your provider — try `auto/chat`, `auto/best-fast` |
 | `OWNER_ID` | No | Your Discord user ID |
 | `GUILD_ID` | No | Guild ID for instant slash command registration |
 | `ODDS_API_KEY` | No | The Odds API key for real betting lines |

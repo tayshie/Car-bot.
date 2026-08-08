@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PermissionFlagsBits } from 'discord.js';
+import * as logger from './logger.js';
 
 const LORE_FILE = fileURLToPath(new URL('../data/lore.json', import.meta.url));
 
@@ -79,5 +80,4 @@ export async function backfill(client, guild, { perChannel = 50, maxChannels = 4
       /* skip channels we can't read */
     }
   }
-  console.log(`Server memory backfill done: ${added} messages from ${channels.length} channels.`);
-}
+  logger.log(`Server memory backfill done: ${added} messages from ${channels.length} channels.`);}
