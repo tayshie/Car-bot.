@@ -201,6 +201,12 @@ All data is local and excluded from git via `.gitignore`.
 | `RESOLVE_MINUTES` | No | How often to settle bets (default 5) |
 | `GOSSIP_MIN_HOURS` | No | Min hours between gossip drops (default 2) |
 | `GOSSIP_MAX_HOURS` | No | Max hours between gossip drops (default 6) |
+| `LORE_CHANNEL_LIMIT` | No | Max stored messages per channel (default 40) |
+| `LORE_USER_LIMIT` | No | Max stored messages per user (default 20) |
+| `LORE_TOTAL_LIMIT` | No | Max total stored messages (default 5000) |
+| `LORE_MAX_USERS` | No | Max tracked users before least-active pruning (default 1000) |
+| `LORE_SAVE_INTERVAL_MS` | No | Debounce window for lore disk writes, ms (default 5000) |
+| `CONTEXT_CHAR_BUDGET` | No | Max chars of insider context fed to LLM per reply (default 1200) |
 
 ## Project Structure
 
@@ -233,6 +239,20 @@ pm2 start src/index.js --name carl-bot
 pm2 startup
 pm2 save
 ```
+
+### PM2 Log Rotation
+
+Carl writes a lot (backfills, bet settlements, gossip, every error). Without rotation, stdout logs will eat your disk over months of uptime. Install pm2-logrotate:
+```bash
+pm2 install pm2-logrotate
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 5
+pm2 set pm2-logrotate:compress true
+pm2 set pm2-logrotate:rotateInterval '0 0 * * *'
+```
+This rotates logs daily (or at 10MB, whichever first), keeps 5 archives, and compresses them.
+
+The bot's own `logs/carl.log` is already self-rotating (keeps ~2000 lines, `LORE_SAVE_INTERVAL_MS` controls write batching).
 
 ## License
 

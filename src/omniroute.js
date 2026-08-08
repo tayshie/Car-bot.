@@ -29,7 +29,8 @@ class OmniRouteClient {
 
   async chat(messages, options = {}) {
     const url = `${this.baseUrl}/v1/chat/completions`;
-    
+    const retries = options.retries ?? 2;
+
     const systemContent = options.context
       ? `${CARL_SYSTEM_PROMPT}\n\n--- THINGS YOU'VE NOTICED AROUND THE SERVER ---\n${options.context}`
       : CARL_SYSTEM_PROMPT;
@@ -46,6 +47,22 @@ class OmniRouteClient {
       ...options
     };
 
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await this._post(url, payload);
+      } catch (err) {
+        lastError = err;
+        if (attempt < retries) {
+          const backoff = 1500 * Math.pow(2, attempt);
+          await new Promise((r) => setTimeout(r, backoff));
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  async _post(url, payload) {
     const response = await fetch(url, {
       method: 'POST',
       headers: {

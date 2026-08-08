@@ -76,7 +76,7 @@ function getHistory(channelId) {
 
 function addToHistory(channelId, role, content) {
   const history = getHistory(channelId);
-  history.push({ role, content });
+  history.push({ role, content: String(content).slice(0, 1500) });
   if (history.length > MAX_HISTORY * 2) {
     history.splice(0, history.length - MAX_HISTORY * 2);
   }
@@ -408,19 +408,35 @@ function canPost(channel) {
   return channel.permissionsFor(me)?.has(PermissionFlagsBits.SendMessages) ?? false;
 }
 
+const CONTEXT_CHAR_BUDGET = Number(process.env.CONTEXT_CHAR_BUDGET || 1200);
+
 function buildContext(channelId, authorId, authorName) {
   const parts = [];
+  let budget = CONTEXT_CHAR_BUDGET;
+
   const recent = lore.recentChannel(channelId, 6);
   if (recent.length) {
     parts.push('What people have been saying in this channel:');
-    for (const m of recent) parts.push(`- ${m.username}: ${m.content.slice(0, 200)}`);
+    for (const m of recent) {
+      const line = `- ${m.username}: ${m.content}`;
+      if (budget <= 0) break;
+      const clipped = line.length > budget ? line.slice(0, budget) : line;
+      parts.push(clipped);
+      budget -= clipped.length;
+    }
   }
   const userMsgs = lore
     .recentByUser(authorId, 5)
     .filter((m) => m.channelId !== channelId && m.content);
-  if (userMsgs.length) {
+  if (userMsgs.length && budget > 0) {
     parts.push(`What ${authorName} has been up to elsewhere:`);
-    for (const m of userMsgs) parts.push(`- [${m.channelName}] ${m.content.slice(0, 150)}`);
+    for (const m of userMsgs) {
+      if (budget <= 0) break;
+      const line = `- [${m.channelName}] ${m.content}`;
+      const clipped = line.length > budget ? line.slice(0, budget) : line;
+      parts.push(clipped);
+      budget -= clipped.length;
+    }
   }
   return parts.join('\n');
 }
@@ -1118,7 +1134,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         temperature: 1.15,
         maxTokens: 160,
       });
-    } catch {
+    } catch (err) {
+      logger.error('shade chat error:', err.message);
       await interaction.editReply("OmniRoute's down. Can't talk shit right now.");
       return;
     }

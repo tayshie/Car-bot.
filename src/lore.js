@@ -5,7 +5,15 @@ import * as logger from './logger.js';
 
 const LORE_FILE = fileURLToPath(new URL('../data/lore.json', import.meta.url));
 
+const CHANNEL_LIMIT = Number(process.env.LORE_CHANNEL_LIMIT || 40);
+const USER_LIMIT = Number(process.env.LORE_USER_LIMIT || 20);
+const TOTAL_LIMIT = Number(process.env.LORE_TOTAL_LIMIT || 5000);
+const SAVE_INTERVAL_MS = Number(process.env.LORE_SAVE_INTERVAL_MS || 5000);
+const MAX_USERS = Number(process.env.LORE_MAX_USERS || 1000);
+
 let lore = load();
+let dirty = false;
+let saveTimer = null;
 
 function load() {
   try {
@@ -15,7 +23,9 @@ function load() {
   }
 }
 
-function save() {
+function flush() {
+  if (!dirty) return;
+  dirty = false;
   try {
     mkdirSync(fileURLToPath(new URL('../data', import.meta.url)), { recursive: true });
     writeFileSync(LORE_FILE, JSON.stringify(lore));
@@ -24,19 +34,40 @@ function save() {
   }
 }
 
+// Debounced save: collapses thousands of per-message writes into one write
+// every SAVE_INTERVAL_MS. Also flushes on process exit.
+function save() {
+  dirty = true;
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    flush();
+  }, SAVE_INTERVAL_MS);
+}
+
+process.on('exit', flush);
+
 export function addMessage({ userId, username, channelId, channelName, content, ts }) {
   const entry = { userId, username, channelId, channelName, content, ts };
   const ch = (lore.channels[channelId] ||= []);
   ch.push(entry);
-  if (ch.length > 40) ch.splice(0, ch.length - 40);
+  if (ch.length > CHANNEL_LIMIT) ch.splice(0, ch.length - CHANNEL_LIMIT);
 
   const u = (lore.users[userId] ||= { name: username, msgs: [] });
   u.name = username;
   u.msgs.push(entry);
-  if (u.msgs.length > 20) u.msgs.splice(0, u.msgs.length - 20);
+  if (u.msgs.length > USER_LIMIT) u.msgs.splice(0, u.msgs.length - USER_LIMIT);
 
   lore.all.push(entry);
-  if (lore.all.length > 5000) lore.all.splice(0, lore.all.length - 5000);
+  if (lore.all.length > TOTAL_LIMIT) lore.all.splice(0, lore.all.length - TOTAL_LIMIT);
+
+  // Prune least-active users if the user map balloons past MAX_USERS.
+  if (Object.keys(lore.users).length > MAX_USERS) {
+    const sorted = Object.entries(lore.users).sort((a, b) => a[1].msgs.length - b[1].msgs.length);
+    const overflow = sorted.length - MAX_USERS;
+    for (let i = 0; i < overflow; i++) delete lore.users[sorted[i][0]];
+  }
+
   save();
 }
 
@@ -80,4 +111,6 @@ export async function backfill(client, guild, { perChannel = 50, maxChannels = 4
       /* skip channels we can't read */
     }
   }
-  logger.log(`Server memory backfill done: ${added} messages from ${channels.length} channels.`);}
+  flush();
+  logger.log(`Server memory backfill done: ${added} messages from ${channels.length} channels.`);
+}
