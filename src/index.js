@@ -58,13 +58,14 @@ const KEYWORDS = [
   { match: ['giants', 'yankees', 'super bowl', 'touchdown'], label: 'sports' },
   { match: ['2 wycked', 'stealth', 'dodge', 'spoiler'], label: 'car' },
   { match: ['foreigner', 'more than a feeling', 'judas priest', 'ted nugent', 'led zeppelin', 'loverboy', 'bryan adams', 'krokus', 'boston', 'cat scratch fever'], label: 'rock' },
+  { match: ['juggalo', 'juggalos', 'icp', 'faygo', 'hatchet', 'whoop whoop', 'dark carnival', 'wicked clownz', 'gathering of the juggalos'], label: 'juggalo' },
   { match: ['melon shakers', 'strip club', 'titties'], label: 'clubs' },
   { match: ['frylock', 'meatwad', 'master shake'], label: 'teens' },
   { match: ['hooker', 'prostitute', 'escort'], label: 'hookers' },
   { match: ['wanna bet', 'lets bet', 'bet on it', 'put money'], label: 'bets' },
 ];
 
-const REACT_EMOJIS = ['🍺', '🏈', '💵', '😡', '🚬', '🍔', '📺', '💀', '⚾', '🏀', '🥊'];
+const REACT_EMOJIS = ['🍺', '🏈', '💵', '😡', '🚬', '🍔', '📺', '💀', '⚾', '🏀', '🥊', '🤡', '🪓', '🥤'];    
 
 function getHistory(channelId) {
   if (!conversationHistory.has(channelId)) {
