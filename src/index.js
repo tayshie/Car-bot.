@@ -9,6 +9,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder,
+  AttachmentBuilder,
 } from 'discord.js';
 import { OmniRouteClient } from './omniroute.js';
 import * as sports from './sports.js';
@@ -21,6 +22,7 @@ import * as records from './records.js';
 import * as games from './games.js';
 import * as trivia from './trivia.js';
 import * as cah from './cah.js';
+import * as imagegen from './imagegen.js';
 import * as logger from './logger.js';
 
 const OMNIROUTE_URL = process.env.OMNIROUTE_URL || 'http://localhost:20128';
@@ -35,6 +37,8 @@ const ANNOUNCE_MAX_MS = Number(process.env.ANNOUNCE_MAX_HOURS || 5) * 3600000;
 const RESOLVE_INTERVAL = Number(process.env.RESOLVE_MINUTES || 5) * 60000;
 const GOSSIP_MIN_MS = Number(process.env.GOSSIP_MIN_HOURS || 2) * 3600000;
 const GOSSIP_MAX_MS = Number(process.env.GOSSIP_MAX_HOURS || 6) * 3600000;
+const GOSSIP_FIRST_MIN_MS = Number(process.env.GOSSIP_FIRST_MIN || 15) * 60000;
+const GOSSIP_FIRST_MAX_MS = Number(process.env.GOSSIP_FIRST_MAX || 45) * 60000;
 
 if (!DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN not set in .env');
@@ -437,8 +441,10 @@ async function gossipDig() {
   await channel.send({ content, allowedMentions: { parse: [] } });
 }
 
-function scheduleGossip() {
-  const delay = GOSSIP_MIN_MS + Math.random() * (GOSSIP_MAX_MS - GOSSIP_MIN_MS);
+function scheduleGossip(first = false) {
+  const delay = first
+    ? GOSSIP_FIRST_MIN_MS + Math.random() * (GOSSIP_FIRST_MAX_MS - GOSSIP_FIRST_MIN_MS)
+    : GOSSIP_MIN_MS + Math.random() * (GOSSIP_MAX_MS - GOSSIP_MIN_MS);
   setTimeout(async () => {
     try {
       await gossipDig();
@@ -509,7 +515,7 @@ client.once(Events.ClientReady, (readyClient) => {
   }
 
   scheduleAnnounce();
-  scheduleGossip();
+  scheduleGossip(true);
   resolveBets();
   setInterval(resolveBets, RESOLVE_INTERVAL);
 
@@ -2055,6 +2061,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     await interaction.reply(`**${label || 'COUNTDOWN'}** — ${utility.formatUntil(target)} left.\nSet your clocks, don't be late.`);
+    return;
+  }
+
+  if (commandName === 'imagine') {
+    const prompt = interaction.options.getString('prompt');
+    const model = interaction.options.getString('model') || 'flux';
+    const size = interaction.options.getString('size') || 'square';
+
+    await interaction.deferReply();
+
+    const seed = Math.floor(Math.random() * 1000000);
+    let image;
+    try {
+      image = await imagegen.generateImage(prompt, { model, size, seed });
+    } catch (error) {
+      logger.error('imagine error:', error.message);
+      await interaction.editReply(
+        "The image machine's shittin' out smoke. Try again in a minute, I gotta kick the printer."
+      );
+      return;
+    }
+
+    const ext = image.url.includes('png') ? 'png' : 'jpg';
+    const file = new AttachmentBuilder(image.buffer, { name: `carl-imagine.${ext}` });
+    await interaction.editReply({
+      content: `**${prompt}**`,
+      files: [file],
+    });
     return;
   }
 

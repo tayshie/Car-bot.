@@ -36,6 +36,9 @@ Hey. Carl here. 2 Wycked's in the shop, Foreigner's on the stereo, and I've been
 - /whois <domain> — who registered it, when, when it expires
 - /pwned <password> — I check if your password's been leaked (nobody sees this, only you)
 
+**PICTURES**
+- /imagine <prompt> [model] [size] — I conjure up an AI picture. Free, no key, no bullshit. Pick a style (flux / realism / turbo / anime / 3d) and a shape (square / landscape / portrait)
+
 **UTILITIES**
 - /reminder <when> <what> — I remind the whole channel ("2h", "30m", "tomorrow")
 - /deadline <when> <task> — set a deadline, I'll nag ya until it's done

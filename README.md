@@ -43,6 +43,9 @@ Carl's a server insider. He watches everything, remembers everything, bets on ga
 - **/whois** — registrar, dates, nameservers, status
 - **/pwned** — password breach check (ephemeral, k-anonymity; only the SHA-1 prefix leaves the machine)
 
+### AI Images
+- **/imagine** — free AI image generation via Pollinations (no key, no signup). Pick a style (Flux / photorealistic / fast / anime / 3D) and a shape
+
 ### Utilities
 - **/reminder** — channel-wide reminder (relative time: "2h", "30m", "tomorrow")
 - **/deadline** — persistent deadline Carl nags about (at 1hr-to-go, then every hour overdue); **/deadlines**, **/done**
@@ -147,6 +150,11 @@ Invite the bot with `applications.commands` scope and the following permissions:
 | `/whois <domain>` | Registration info |
 | `/pwned <password>` | Breach check (ephemeral) |
 
+### AI Images
+| Command | Description |
+|---------|-------------|
+| `/imagine <prompt> [model] [size]` | Free AI image generation (Pollinations, no key). Models: flux (default) / realism / turbo / anime / 3d. Sizes: square / landscape / portrait |
+
 ### Utilities
 | Command | Description |
 |---------|-------------|
@@ -219,6 +227,8 @@ All data is local and excluded from git via `.gitignore`.
 | `RESOLVE_MINUTES` | No | How often to settle bets (default 5) |
 | `GOSSIP_MIN_HOURS` | No | Min hours between gossip drops (default 2) |
 | `GOSSIP_MAX_HOURS` | No | Max hours between gossip drops (default 6) |
+| `GOSSIP_FIRST_MIN` | No | Min minutes until the first gossip after boot (default 15) |
+| `GOSSIP_FIRST_MAX` | No | Max minutes until the first gossip after boot (default 45) |
 | `TRIVIA_REWARD` | No | Coins banked for a correct trivia answer (default 100) |
 | `TRIVIA_PENALTY` | No | Coins lost for a wrong trivia answer (default 25) |
 | `LORE_CHANNEL_LIMIT` | No | Max stored messages per channel (default 40) |
@@ -243,6 +253,7 @@ ARL/
 │   ├── lore.js              # Server memory
 │   ├── serverlore.js        # History search + profiles
 │   ├── osint.js             # Web search + IP/DNS/WHOIS/pwned
+│   ├── imagegen.js          # Free AI image generation (Pollinations)
 │   ├── records.js           # Deadlines, birthdays, quotes
 │   ├── games.js             # Blackjack, slots, dice, coin logic
 │   ├── trivia.js            # Trivia question bank

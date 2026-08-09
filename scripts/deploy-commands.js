@@ -299,6 +299,42 @@ const commands = [
     ],
   },
   {
+    name: 'imagine',
+    description: 'Generate an AI image (free, powered by Pollinations)',
+    options: [
+      {
+        name: 'prompt',
+        description: 'What should the picture be?',
+        type: 3,
+        required: true,
+      },
+      {
+        name: 'model',
+        description: 'Which style?',
+        type: 3,
+        required: false,
+        choices: [
+          { name: 'Flux (default)', value: 'flux' },
+          { name: 'Photorealistic', value: 'realism' },
+          { name: 'Fast', value: 'turbo' },
+          { name: 'Anime', value: 'anime' },
+          { name: '3D', value: '3d' },
+        ],
+      },
+      {
+        name: 'size',
+        description: 'Image shape',
+        type: 3,
+        required: false,
+        choices: [
+          { name: 'Square', value: 'square' },
+          { name: 'Landscape', value: 'landscape' },
+          { name: 'Portrait', value: 'portrait' },
+        ],
+      },
+    ],
+  },
+  {
     name: 'shade',
     description: 'Secretly make Carl trash-talk someone (only you see this)',
     options: [
