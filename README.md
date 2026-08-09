@@ -112,6 +112,17 @@ Invite the bot with `applications.commands` scope and the following permissions:
 | `/claim` | Daily Carl Coin handout |
 | `/leaderboard` | Richest bastards in the server |
 
+### Games
+| Command | Description |
+|---------|-------------|
+| `/blackjack <bet> [opponent1] [opponent2] [opponent3]` | Hit/stand/double vs Carl the dealer. Add up to 3 opponents and you all play at one table against the same dealer, taking turns |
+| `/slots <bet>` | Three-reel machine, 2x on pairs, 8-25x on triples (single player) |
+| `/dice <bet> [@opponent]` | Roll 2d6. Vs Carl = 2x payout. Add an opponent and you both stake, winner takes the pot |
+| `/coin <bet> [heads/tails] [@opponent]` | Flip a coin. Vs Carl = 2x payout. Add an opponent and you both stake, winner takes the pot |
+| `/duel <bet> <@user>` | Challenge a member to a coin flip, winner takes the pot |
+| `/trivia [category]` | Channel-wide trivia - anyone can answer. Correct banks +100, wrong costs -25 (adult swim / classic rock / juggalo / sports / general) |
+| `/cah` | Start a game of Carl's Cards (Cards Against Humanity). Join via button, first to 3 wins. Cards are DM'd privately, card czar picks the winner |
+
 ### Server Insider
 | Command | Description |
 |---------|-------------|
@@ -224,6 +235,9 @@ ARL/
 │   ├── serverlore.js        # History search + profiles
 │   ├── osint.js             # Web search + IP/DNS/WHOIS/pwned
 │   ├── records.js           # Deadlines, birthdays, quotes
+│   ├── games.js             # Blackjack, slots, dice, coin logic
+│   ├── trivia.js            # Trivia question bank
+│   ├── cah.js               # Carl's Cards (CAH) deck
 │   └── utility.js           # Time parsing, unit conversion
 ├── data/                    # Local data (gitignored)
 ├── CARL-INFO.md             # Share-ready command list

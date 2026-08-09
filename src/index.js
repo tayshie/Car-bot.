@@ -1,5 +1,15 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, Events, MessageFlags, PermissionFlagsBits } from 'discord.js';
+import {
+  Client,
+  GatewayIntentBits,
+  Events,
+  MessageFlags,
+  PermissionFlagsBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+} from 'discord.js';
 import { OmniRouteClient } from './omniroute.js';
 import * as sports from './sports.js';
 import * as store from './store.js';
@@ -8,6 +18,9 @@ import * as serverlore from './serverlore.js';
 import * as lore from './lore.js';
 import * as utility from './utility.js';
 import * as records from './records.js';
+import * as games from './games.js';
+import * as trivia from './trivia.js';
+import * as cah from './cah.js';
 import * as logger from './logger.js';
 
 const OMNIROUTE_URL = process.env.OMNIROUTE_URL || 'http://localhost:20128';
@@ -46,6 +59,266 @@ const client = new Client({
 
 const conversationHistory = new Map();
 const MAX_HISTORY = 10;
+
+const blackjackTables = new Map();
+const duels = new Map();
+const triviaGames = new Map();
+let gameCounter = 0;
+
+const TRIVIA_REWARD = Number(process.env.TRIVIA_REWARD || 100);
+const TRIVIA_PENALTY = Number(process.env.TRIVIA_PENALTY || 25);
+
+function renderBlackjackTable(table) {
+  const lines = [`**CARL'S BLACKJACK TABLE**`];
+  table.hands.forEach((h, i) => {
+    const v = games.handValue(h.cards);
+    const marker = !h.done && i === table.currentIdx ? ' ← YOUR TURN' : '';
+    const bet = h.bet * (h.doubled ? 2 : 1);
+    lines.push(`[${i + 1}] ${h.username}: ${games.handLabel(h.cards)} = **${v}** (bet ${bet})${marker}`);
+  });
+  lines.push(`Carl shows: ${table.dealer[0].rank}${table.dealer[0].suit}`);
+  return lines.join('\n');
+}
+
+function blackjackButtons(table) {
+  const current = table.hands[table.currentIdx];
+  if (!current || current.done) return [];
+  const row = new ActionRowBuilder();
+  row.addComponents(
+    new ButtonBuilder().setCustomId(`bj_hit:${current.userId}`).setLabel('HIT').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`bj_stand:${current.userId}`).setLabel('STAND').setStyle(ButtonStyle.Primary)
+  );
+  if (current.cards.length === 2) {
+    row.addComponents(
+      new ButtonBuilder().setCustomId(`bj_double:${current.userId}`).setLabel('DOUBLE').setStyle(ButtonStyle.Danger)
+    );
+  }
+  return [row];
+}
+
+function bjAdvance(table) {
+  while (table.currentIdx < table.hands.length && table.hands[table.currentIdx].done) {
+    table.currentIdx++;
+  }
+  return table.currentIdx < table.hands.length;
+}
+
+function settleBlackjackTable(table) {
+  while (games.handValue(table.dealer) < 17) table.dealer.push(table.deck.pop());
+  const dv = games.handValue(table.dealer);
+  const results = [`**TABLE RESULTS** — Carl: ${games.handLabel(table.dealer)} = **${dv}**`];
+  for (const h of table.hands) {
+    const pv = games.handValue(h.cards);
+    const natural = games.isBlackjack(h.cards);
+    const bet = h.bet * (h.doubled ? 2 : 1);
+    let line;
+    if (pv > 21) {
+      line = `**BUST** (${pv}) — lost ${bet}`;
+    } else if (dv > 21) {
+      const coins = Math.round(bet * 2);
+      store.addCoins(h.userId, coins);
+      line = `Carl busts — win ${coins}`;
+    } else if (natural && dv !== 21) {
+      const coins = Math.round(bet * 2.5);
+      store.addCoins(h.userId, coins);
+      line = `**BLACKJACK!** — win ${coins}`;
+    } else if (pv > dv) {
+      const coins = Math.round(bet * 2);
+      store.addCoins(h.userId, coins);
+      line = `win ${coins} (${pv} beats ${dv})`;
+    } else if (pv === dv) {
+      store.addCoins(h.userId, bet);
+      line = `push (${pv} = ${dv}) — coin's back`;
+    } else {
+      line = `lost ${bet} (${pv} vs ${dv})`;
+    }
+    results.push(`${h.username}: ${games.handLabel(h.cards)} = **${pv}** — ${line}`);
+  }
+  return results.join('\n');
+}
+
+function triviaButtons(q) {
+  const row = new ActionRowBuilder();
+  const labels = ['A', 'B', 'C', 'D'];
+  q.options.forEach((opt, i) =>
+    row.addComponents(
+      new ButtonBuilder().setCustomId(`triv_${i}`).setLabel(`${labels[i]}: ${opt}`).setStyle(ButtonStyle.Secondary)
+    )
+  );
+  return [row];
+}
+
+const cahGames = new Map();
+const CAH_MIN_PLAYERS = 3;
+const CAH_HAND_SIZE = 7;
+const CAH_TARGET_WINS = 3;
+const CAH_SUBMIT_TIMEOUT_MS = 90000;
+const CAH_JUDGE_TIMEOUT_MS = 90000;
+const CAH_LABELS = 'ABCDEFGH';
+
+function cahLobbyContent(game) {
+  const players = game.players
+    .map((p) => (p.id === game.hostId ? `**${p.username}** (host)` : p.username))
+    .join('\n');
+  return (
+    `**CARL'S CARDS** — the worst game for the worst people.\n\n` +
+    `**Players (${game.players.length}):**\n${players || 'Nobody yet.'}\n\n` +
+    `Hit JOIN to get in. ${CAH_MIN_PLAYERS}+ to start. First to ${CAH_TARGET_WINS} wins.`
+  );
+}
+
+function cahDeal(game) {
+  for (const p of game.players) {
+    p.hand = [];
+    for (let i = 0; i < CAH_HAND_SIZE; i++) p.hand.push(cah.drawWhite(game.deck));
+  }
+}
+
+function cahNewRound(game) {
+  game.czarIdx = game.round % game.players.length;
+  game.blackCard = cah.drawBlack(game.deck);
+  game.submissions = new Map();
+  game.phase = 'submitting';
+  game.round++;
+  game.roundWinner = null;
+  clearTimeout(game.timer);
+
+  const czar = game.players[game.czarIdx];
+  const others = game.players.filter((_, i) => i !== game.czarIdx);
+
+  const channel = client.channels.cache.get(game.channelId);
+  const lines = [];
+  lines.push(`**ROUND ${game.round}**`);
+  lines.push(`**CARD CZAR: ${czar.username}**`);
+  lines.push(`**Black card:** ${game.blackCard}`);
+  lines.push('');
+  lines.push(`${others.map((p) => p.username).join(', ') || 'Nobody'} — I'll DM you. Pick a card. You got 90 seconds.`);
+  if (channel) channel.send({ content: lines.join('\n'), allowedMentions: { parse: [] } }).catch(() => {});
+
+  for (const p of others) cahAskForCard(game, p);
+
+  game.timer = setTimeout(() => {
+    if (cahGames.get(game.channelId) !== game || game.phase !== 'submitting') return;
+    for (const p of others) {
+      if (!game.submissions.has(p.id)) {
+        game.submissions.set(p.id, p.hand.splice(0, 1)[0]);
+        p.hand.push(cah.drawWhite(game.deck));
+      }
+    }
+    cahReveal(game);
+  }, CAH_SUBMIT_TIMEOUT_MS);
+}
+
+function cahAskForCard(game, player) {
+  const hand = player.hand.slice(0, 25);
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`cah_submit:${game.channelId}:${game.round}`)
+      .setPlaceholder('Pick the funniest (worst) card')
+      .addOptions(
+        hand.map((card, i) => ({
+          label: cah.truncate(card, 100),
+          value: String(i),
+        }))
+      )
+  );
+  client.users
+    .fetch(player.id)
+    .then((u) => u.send({ content: `**CARL'S CARDS — Round ${game.round}**\n\nBlack card: ${game.blackCard}\n\nPick your card:`, components: [row] }))
+    .catch(() => {});
+}
+
+function cahCheckSubmissions(game) {
+  if (game.phase !== 'submitting') return;
+  const others = game.players.filter((_, i) => i !== game.czarIdx);
+  const missing = others.filter((p) => !game.submissions.has(p.id));
+  if (missing.length) return;
+  cahReveal(game);
+}
+
+function cahReveal(game) {
+  game.phase = 'judging';
+  const czar = game.players[game.czarIdx];
+  const others = game.players.filter((_, i) => i !== game.czarIdx);
+  game.revealed = cah.shuffle(
+    others.map((p) => ({ playerId: p.id, card: game.submissions.get(p.id), author: p.username }))
+  );
+  const channel = client.channels.cache.get(game.channelId);
+  if (!channel) return;
+  const lines = [`**CARL'S CARDS — Round ${game.round}**`, `**Black card:** ${game.blackCard}`, ''];
+  game.revealed.forEach((r, i) => {
+    lines.push(`**${CAH_LABELS[i]}:** ${r.card}`);
+  });
+  lines.push('');
+  lines.push(`**${czar.username}**, pick the winner. 90 seconds.`);
+
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`cah_judge:${game.channelId}:${game.round}`)
+      .setPlaceholder('Pick the best answer')
+      .addOptions(
+        game.revealed.map((r, i) => ({
+          label: `${CAH_LABELS[i]}: ${cah.truncate(r.card, 95)}`,
+          value: String(i),
+        }))
+      )
+  );
+  channel.send({ content: lines.join('\n'), components: [row] }).catch(() => {});
+
+  clearTimeout(game.timer);
+  game.timer = setTimeout(() => {
+    if (cahGames.get(game.channelId) !== game || game.phase !== 'judging') return;
+    const randomIdx = Math.floor(Math.random() * game.revealed.length);
+    cahFinishRound(game, randomIdx);
+  }, CAH_JUDGE_TIMEOUT_MS);
+}
+
+function cahFinishRound(game, winnerIdx) {
+  const winner = game.revealed[winnerIdx];
+  const player = game.players.find((p) => p.id === winner.playerId);
+  player.score++;
+  game.winners.push(`${winner.author}: ${winner.card}`);
+
+  const channel = client.channels.cache.get(game.channelId);
+  if (channel) {
+    channel
+      .send({
+        content:
+          `**ROUND ${game.round} WINNER: ${winner.author}!**\n\n` +
+          game.winners
+            .map((w, i) => `Round ${i + 1}: ${w}`)
+            .join('\n'),
+        allowedMentions: { parse: [] },
+      })
+      .catch(() => {});
+  }
+
+  if (player.score >= CAH_TARGET_WINS || game.round >= 15) {
+    cahEndGame(game);
+    return;
+  }
+  cahNewRound(game);
+}
+
+function cahEndGame(game) {
+  game.phase = 'ended';
+  const channel = client.channels.cache.get(game.channelId);
+  const sorted = [...game.players].sort((a, b) => b.score - a.score);
+  const lines = [`**CARL'S CARDS — GAME OVER**`, ''];
+  sorted.forEach((p, i) => {
+    lines.push(`${i + 1}. **${p.username}** — ${p.score} wins`);
+  });
+  if (channel) channel.send({ content: lines.join('\n'), allowedMentions: { parse: [] } }).catch(() => {});
+  cahGames.delete(game.channelId);
+}
+
+function cahStartGame(game) {
+  game.phase = 'dealing';
+  const deck = cah.newDeck();
+  game.deck = { blacks: cah.shuffle(deck.blacks), whites: cah.shuffle(deck.whites) };
+  cahDeal(game);
+  cahNewRound(game);
+}
 
 const KEYWORD_COOLDOWN_MS = 45000;
 const REACT_COOLDOWN_MS = 30000;
@@ -441,7 +714,339 @@ function buildContext(channelId, authorId, authorName) {
   return parts.join('\n');
 }
 
+async function handleSelectMenuInteraction(interaction) {
+  const customId = interaction.customId;
+  const [action, channelId, roundStr] = customId.split(':');
+  const round = Number(roundStr);
+  const game = cahGames.get(channelId);
+  const value = interaction.values[0];
+
+  if (action === 'cah_submit') {
+    if (!game || game.round !== round || game.phase !== 'submitting') {
+      await interaction.reply({
+        content: "That round's over. Too slow.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const player = game.players.find((p) => p.id === interaction.user.id);
+    if (!player) {
+      await interaction.reply({ content: "You're not in this game.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (game.submissions.has(player.id)) {
+      await interaction.reply({ content: "You already played a card.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const card = player.hand[Number(value)];
+    player.hand.splice(Number(value), 1);
+    player.hand.push(cah.drawWhite(game.deck));
+    game.submissions.set(player.id, card);
+    await interaction.update({
+      content: `You played: **${card}**\n\nBlack card was: ${game.blackCard}`,
+      components: [],
+    });
+    cahCheckSubmissions(game);
+    return;
+  }
+
+  if (action === 'cah_judge') {
+    if (!game || game.round !== round || game.phase !== 'judging') {
+      await interaction.reply({
+        content: "That round's over. Too slow.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (interaction.user.id !== game.players[game.czarIdx].id) {
+      await interaction.reply({
+        content: "You're not the Card Czar, ya hack.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    cahFinishRound(game, Number(value));
+    await interaction.update({ content: 'Winner picked. Next round...', components: [] });
+    return;
+  }
+
+  await interaction.reply({
+    content: "I don't know what that menu does. Probably belongs to Frylock.",
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+async function handleButtonInteraction(interaction) {
+  const customId = interaction.customId;
+
+  if (customId.startsWith('bj_hit:') || customId.startsWith('bj_stand:') || customId.startsWith('bj_double:')) {
+    const [action, userId] = customId.split(':');
+    if (userId !== interaction.user.id) {
+      await interaction.reply({
+        content: "That's not your hand, butt out.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const table = blackjackTables.get(interaction.channel.id);
+    if (!table) {
+      await interaction.reply({
+        content: "That table's already gone. Start a new one with /blackjack.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const current = table.hands[table.currentIdx];
+    if (!current || current.userId !== interaction.user.id) {
+      await interaction.reply({
+        content: "Not your turn. Wait your damn turn.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (action === 'bj_hit') {
+      current.cards.push(table.deck.pop());
+      const v = games.handValue(current.cards);
+      if (v >= 21) {
+        current.done = true;
+      }
+    } else if (action === 'bj_double') {
+      const user = store.getUser(interaction.user.id, { create: true, start: CARL_COIN_START });
+      const stake = current.bet * 2;
+      if (user.coins < stake) {
+        await interaction.reply({
+          content: "You can't afford to double down, ya broke bastard.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      store.takeCoins(interaction.user.id, current.bet);
+      current.doubled = true;
+      current.cards.push(table.deck.pop());
+      current.done = true;
+    } else {
+      current.done = true;
+    }
+
+    if (bjAdvance(table)) {
+      await interaction.update({
+        content: renderBlackjackTable(table),
+        components: blackjackButtons(table),
+      });
+      return;
+    }
+    blackjackTables.delete(interaction.channel.id);
+    await interaction.update({ content: settleBlackjackTable(table), components: [] });
+    return;
+  }
+
+  if (/^(duel|dice|coin)_(accept|decline):/.test(customId)) {
+    const [prefix, id] = customId.split(':');
+    const [type, action] = prefix.split('_');
+    const challenge = duels.get(id);
+    if (!challenge) {
+      await interaction.reply({
+        content: "That challenge's already gone. Missed your shot.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (interaction.user.id !== challenge.target) {
+      await interaction.reply({
+        content: "This aint your challenge, butt out.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (action === 'decline') {
+      duels.delete(id);
+      store.addCoins(challenge.challenger, challenge.bet);
+      await interaction.update({
+        content: `${interaction.user} backed out. Coward. ${interaction.user} gets their ${challenge.bet} back.`,
+        components: [],
+      });
+      return;
+    }
+    // accept
+    const targetUser = store.getUser(challenge.target, { create: true, start: CARL_COIN_START });
+    if (targetUser.coins < challenge.bet) {
+      duels.delete(id);
+      store.addCoins(challenge.challenger, challenge.bet);
+      await interaction.update({
+        content: `${interaction.user} aint got ${challenge.bet} coins to back the challenge. Challenge's off. Challenger's money's back.`,
+        components: [],
+      });
+      return;
+    }
+    store.takeCoins(challenge.target, challenge.bet);
+    duels.delete(id);
+
+    const pot = challenge.bet * 2;
+    const winnerName = (w) => (w === challenge.challenger ? `<@${challenge.challenger}>` : `<@${challenge.target}>`);
+
+    if (challenge.kind === 'dice') {
+      const cRoll = games.rollDice(2);
+      const tRoll = games.rollDice(2);
+      let winner = null;
+      if (cRoll > tRoll) winner = challenge.challenger;
+      else if (tRoll > cRoll) winner = challenge.target;
+      let content;
+      if (winner) {
+        store.addCoins(winner, pot);
+        content =
+          `**DICE DUEL SETTLED** — ${cRoll} vs ${tRoll}!\n` +
+          `<@${challenge.challenger}> and <@${challenge.target}> put up ${challenge.bet} each. ` +
+          `${winnerName(winner)} takes the **${pot}-coin pot**. Everyone else can go back to being poor.`;
+      } else {
+        store.addCoins(challenge.challenger, challenge.bet);
+        store.addCoins(challenge.target, challenge.bet);
+        content =
+          `**DICE DUEL — TIE** at ${cRoll}! Nothin' but a boring push. Both of ya get your coins back.`;
+      }
+      await interaction.update({ content, components: [] });
+      return;
+    }
+
+    if (challenge.kind === 'coin') {
+      const flip = games.flipCoin();
+      const winner = flip === 'HEADS' ? challenge.challenger : challenge.target;
+      store.addCoins(winner, pot);
+      await interaction.update({
+        content:
+          `**COIN DUEL SETTLED — it's ${flip}!**\n` +
+          `<@${challenge.challenger}> and <@${challenge.target}> put up ${challenge.bet} each. ` +
+          `${winnerName(winner)} takes the **${pot}-coin pot**. Everyone else can go back to being poor.`,
+        components: [],
+      });
+      return;
+    }
+
+    // coin duel (default /duel)
+    const flip = games.flipCoin();
+    const winner = flip === 'HEADS' ? challenge.challenger : challenge.target;
+    store.addCoins(winner, pot);
+    await interaction.update({
+      content:
+        `**DUEL SETTLED — it's ${flip}!**\n` +
+        `<@${challenge.challenger}> and <@${challenge.target}> put up ${challenge.bet} each. ` +
+        `${winnerName(winner)} takes the **${pot}-coin pot**. Everyone else can go back to being poor.`,
+      components: [],
+    });
+    return;
+  }
+
+  if (customId.startsWith('triv_')) {
+    const idx = Number(customId.split('_')[1]);
+    const key = interaction.channel.id;
+    const state = triviaGames.get(key);
+    if (!state) {
+      await interaction.reply({
+        content: "That trivia's done. Start a new one with /trivia.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    triviaGames.delete(key);
+    const { q, category } = state;
+    const labels = ['A', 'B', 'C', 'D'];
+    const correct = idx === q.answer;
+    if (correct) {
+      store.addCoins(interaction.user.id, TRIVIA_REWARD);
+      await interaction.update({
+        content: `**CARL'S TRIVIA (${category})**\n${q.q}\n\n**${labels[idx]}: ${q.options[idx]}** — correct! ${interaction.user} just banked **${TRIVIA_REWARD} coins**.`,
+        components: [],
+      });
+    } else {
+      const user = store.getUser(interaction.user.id, { create: true, start: CARL_COIN_START });
+      if (user.coins >= TRIVIA_PENALTY) {
+        store.takeCoins(interaction.user.id, TRIVIA_PENALTY);
+      }
+      await interaction.update({
+        content:
+          `**CARL'S TRIVIA (${category})**\n${q.q}\n\n` +
+          `**${labels[idx]}: ${q.options[idx]}**?? Nah, ya dope. Answer was **${labels[q.answer]}: ${q.options[q.answer]}**. ` +
+          `You just lost ${TRIVIA_PENALTY} coins for that.`,
+        components: [],
+      });
+    }
+    return;
+  }
+
+  if (customId === 'cah_join' || customId === 'cah_start') {
+    const game = cahGames.get(interaction.channel.id);
+    if (!game) {
+      await interaction.reply({
+        content: "There's no game here. Start one with /cah.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (customId === 'cah_join') {
+      if (game.phase !== 'lobby') {
+        await interaction.reply({
+          content: "Game's already goin. Too late, slowpoke.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      if (!game.players.some((p) => p.id === interaction.user.id)) {
+        game.players.push({
+          id: interaction.user.id,
+          username: interaction.user.username,
+          score: 0,
+          hand: [],
+        });
+      }
+      await interaction.update({ content: cahLobbyContent(game) });
+      return;
+    }
+    if (customId === 'cah_start') {
+      if (interaction.user.id !== game.hostId) {
+        await interaction.reply({
+          content: "Only the host can start the game. Sit down.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      if (game.phase !== 'lobby') {
+        await interaction.reply({
+          content: "Game's already goin.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      if (game.players.length < CAH_MIN_PLAYERS) {
+        await interaction.reply({
+          content: `Need at least ${CAH_MIN_PLAYERS} players. Got ${game.players.length}. Go round 'em up.`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      cahStartGame(game);
+      await interaction.update({
+        content: `**CARL'S CARDS** — game started! ${game.players.length} players.`,
+        components: [],
+      });
+      return;
+    }
+    return;
+  }
+
+  await interaction.reply({
+    content: "I don't know what that button does. Probably belongs to Frylock.",
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isStringSelectMenu()) {
+    await handleSelectMenuInteraction(interaction);
+    return;
+  }
+  if (interaction.isButton()) {
+    await handleButtonInteraction(interaction);
+    return;
+  }
   if (!interaction.isChatInputCommand()) return;
   const { commandName } = interaction;
 
@@ -546,6 +1151,369 @@ client.on(Events.InteractionCreate, async (interaction) => {
       out += `${i + 1}. ${name} — ${r.coins}\n`;
     }
     await interaction.reply(out);
+    return;
+  }
+
+  if (commandName === 'blackjack') {
+    const bet = interaction.options.getInteger('bet');
+    const opponents = [
+      interaction.options.getUser('opponent1'),
+      interaction.options.getUser('opponent2'),
+      interaction.options.getUser('opponent3'),
+    ].filter(Boolean);
+    const players = [interaction.user, ...opponents];
+    const seen = new Set();
+    const uniquePlayers = [];
+    for (const p of players) {
+      if (seen.has(p.id)) continue;
+      if (p.bot) continue;
+      seen.add(p.id);
+      uniquePlayers.push(p);
+    }
+    if (!bet || bet < 1) {
+      await interaction.reply('Put a real bet down, at least 1 coin.');
+      return;
+    }
+    for (const p of uniquePlayers) {
+      const u = store.getUser(p.id, { create: true, start: CARL_COIN_START });
+      if (bet > u.coins) {
+        await interaction.reply(`${p.username} got ${u.coins} Carl Coins. Can't bet ${bet}, ya broke bastards.`);
+        return;
+      }
+    }
+    if (uniquePlayers.length > 1 && blackjackTables.has(interaction.channel.id)) {
+      await interaction.reply("There's already a table goin in this channel. Join it or wait.");
+      return;
+    }
+    if (uniquePlayers.length === 1 && blackjackTables.has(interaction.channel.id)) {
+      await interaction.reply('A table is already goin here. Play solo in another channel.');
+      return;
+    }
+    for (const p of uniquePlayers) {
+      if (!store.takeCoins(p.id, bet)) {
+        await interaction.reply(`${p.username} can't afford it. Go claim your daily.`);
+        return;
+      }
+    }
+    const deck = games.shuffle(games.createDeck());
+    const hands = uniquePlayers.map((p) => ({
+      userId: p.id,
+      username: p.username,
+      bet,
+      cards: [deck.pop(), deck.pop()],
+      done: false,
+      doubled: false,
+    }));
+    const table = {
+      id: `t${++gameCounter}_${interaction.channel.id}`,
+      channelId: interaction.channel.id,
+      deck,
+      hands,
+      dealer: [deck.pop(), deck.pop()],
+      currentIdx: 0,
+    };
+    blackjackTables.set(interaction.channel.id, table);
+    const content = renderBlackjackTable(table);
+    await interaction.reply({ content, components: blackjackButtons(table) });
+    setTimeout(async () => {
+      const t = blackjackTables.get(interaction.channel.id);
+      if (!t || t.id !== table.id) return;
+      if (t.currentIdx < t.hands.length && !t.hands[t.currentIdx].done) {
+        for (const h of t.hands) h.done = true;
+        blackjackTables.delete(interaction.channel.id);
+        try {
+          await interaction
+            .editReply({
+              content: settleBlackjackTable(t) + '\n\nTable timed out. Slackers.',
+              components: [],
+            })
+            .catch(() => {});
+        } catch {
+          /* channel may be gone */
+        }
+      }
+    }, 300000);
+    return;
+  }
+
+  if (commandName === 'slots') {
+    const bet = interaction.options.getInteger('bet');
+    const user = store.getUser(interaction.user.id, { create: true, start: CARL_COIN_START });
+    if (!bet || bet < 1) {
+      await interaction.reply('Put a real bet down, at least 1 coin.');
+      return;
+    }
+    if (bet > user.coins) {
+      await interaction.reply(`You got ${user.coins} Carl Coins. Can't bet ${bet}, ya broke bastard.`);
+      return;
+    }
+    if (!store.takeCoins(interaction.user.id, bet)) {
+      await interaction.reply("Can't afford it. Go claim your daily.");
+      return;
+    }
+    const { reels, multiplier } = games.spinSlots();
+    const line = reels.join(' | ');
+    let content;
+    if (multiplier > 0) {
+      const payout = bet * multiplier;
+      store.addCoins(interaction.user.id, payout);
+      content = `**${line}**\nWINNER! ${multiplier}x on your ${bet} = **${payout} coins**. Lucky son of a bitch.`;
+    } else {
+      content = `**${line}**\nNothing. Zip. Your ${bet} coins went to the house. Same as always.`;
+    }
+    await interaction.reply(content);
+    return;
+  }
+
+  if (commandName === 'dice') {
+    const bet = interaction.options.getInteger('bet');
+    const opponent = interaction.options.getUser('opponent');
+    const user = store.getUser(interaction.user.id, { create: true, start: CARL_COIN_START });
+    if (!bet || bet < 1) {
+      await interaction.reply('Put a real bet down, at least 1 coin.');
+      return;
+    }
+    if (bet > user.coins) {
+      await interaction.reply(`You got ${user.coins} Carl Coins. Can't bet ${bet}, ya broke bastard.`);
+      return;
+    }
+    if (opponent) {
+      if (opponent.id === interaction.user.id) {
+        await interaction.reply("You can't dice yourself, dumbass.");
+        return;
+      }
+      if (opponent.bot) {
+        await interaction.reply("You can't dice a bot. Roll against a real person.");
+        return;
+      }
+      const oppUser = store.getUser(opponent.id, { create: true, start: CARL_COIN_START });
+      if (oppUser.coins < bet) {
+        await interaction.reply(`${opponent.username} got ${oppUser.coins} Carl Coins. They can't afford ${bet}.`);
+        return;
+      }
+      if (!store.takeCoins(interaction.user.id, bet)) {
+        await interaction.reply("Can't afford it. Go claim your daily.");
+        return;
+      }
+      const id = `dice${++gameCounter}_${interaction.channel.id}_${opponent.id}`;
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`dice_accept:${id}`).setLabel('ACCEPT').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`dice_decline:${id}`).setLabel('BACK OUT').setStyle(ButtonStyle.Danger)
+      );
+      duels.set(id, { kind: 'dice', challenger: interaction.user.id, target: opponent.id, bet, channelId: interaction.channel.id });
+      await interaction.reply({
+        content: `**DICE CHALLENGE!** ${interaction.user} is rollin' dice against ${opponent} for **${bet} coins each**. Winner takes the pot. You got 60 seconds, ${opponent}.`,
+        components: [row],
+      });
+      setTimeout(() => {
+        if (duels.has(id)) {
+          duels.delete(id);
+          store.addCoins(interaction.user.id, bet);
+          interaction
+            .editReply("Dice challenge expired. Nobody showed up. Money's back.")
+            .catch(() => {});
+        }
+      }, 60000);
+      return;
+    }
+    if (!store.takeCoins(interaction.user.id, bet)) {
+      await interaction.reply("Can't afford it. Go claim your daily.");
+      return;
+    }
+    const you = games.rollDice(2);
+    const carl = games.rollDice(2);
+    let content;
+    if (you > carl) {
+      store.addCoins(interaction.user.id, bet * 2);
+      content = `You rolled **${you}**, I rolled **${carl}**. You win ${bet * 2}. Fuckin' dice.`;
+    } else if (you === carl) {
+      store.addCoins(interaction.user.id, bet);
+      content = `You rolled **${you}**, I rolled **${carl}**. Push. Coin's back. Boring.`;
+    } else {
+      content = `You rolled **${you}**, I rolled **${carl}**. I win. Hand over that ${bet}, loser.`;
+    }
+    await interaction.reply(content);
+    return;
+  }
+
+  if (commandName === 'coin') {
+    const bet = interaction.options.getInteger('bet');
+    const call = (interaction.options.getString('call') || '').toLowerCase();
+    const opponent = interaction.options.getUser('opponent');
+    const user = store.getUser(interaction.user.id, { create: true, start: CARL_COIN_START });
+    if (!bet || bet < 1) {
+      await interaction.reply('Put a real bet down, at least 1 coin.');
+      return;
+    }
+    if (bet > user.coins) {
+      await interaction.reply(`You got ${user.coins} Carl Coins. Can't bet ${bet}, ya broke bastard.`);
+      return;
+    }
+    if (opponent) {
+      if (opponent.id === interaction.user.id) {
+        await interaction.reply("You can't flip against yourself, dumbass.");
+        return;
+      }
+      if (opponent.bot) {
+        await interaction.reply("You can't flip a bot. Bet a real person.");
+        return;
+      }
+      const oppUser = store.getUser(opponent.id, { create: true, start: CARL_COIN_START });
+      if (oppUser.coins < bet) {
+        await interaction.reply(`${opponent.username} got ${oppUser.coins} Carl Coins. They can't afford ${bet}.`);
+        return;
+      }
+      if (!store.takeCoins(interaction.user.id, bet)) {
+        await interaction.reply("Can't afford it. Go claim your daily.");
+        return;
+      }
+      const id = `coin${++gameCounter}_${interaction.channel.id}_${opponent.id}`;
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`coin_accept:${id}`).setLabel('ACCEPT').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`coin_decline:${id}`).setLabel('BACK OUT').setStyle(ButtonStyle.Danger)
+      );
+      duels.set(id, { kind: 'coin', challenger: interaction.user.id, target: opponent.id, bet, channelId: interaction.channel.id });
+      await interaction.reply({
+        content: `**COIN CHALLENGE!** ${interaction.user} is flippin' a coin against ${opponent} for **${bet} coins each**. Winner takes the pot. You got 60 seconds, ${opponent}.`,
+        components: [row],
+      });
+      setTimeout(() => {
+        if (duels.has(id)) {
+          duels.delete(id);
+          store.addCoins(interaction.user.id, bet);
+          interaction
+            .editReply("Coin challenge expired. Nobody showed up. Money's back.")
+            .catch(() => {});
+        }
+      }, 60000);
+      return;
+    }
+    if (!store.takeCoins(interaction.user.id, bet)) {
+      await interaction.reply("Can't afford it. Go claim your daily.");
+      return;
+    }
+    const flip = games.flipCoin();
+    const won = call ? call === flip.toLowerCase() : null;
+    let content;
+    if (won === null) {
+      store.addCoins(interaction.user.id, bet * 2);
+      content = `It's **${flip}**. You called nothin' and won anyway. ${bet * 2} coins. Fuckin' casual.`;
+    } else if (won) {
+      store.addCoins(interaction.user.id, bet * 2);
+      content = `It's **${flip}**! You called ${call}. ${bet * 2} coins, ya lucky bastard.`;
+    } else {
+      content = `It's **${flip}**. You called ${call}. Lose ${bet}. Maybe quit while you're behind.`;
+    }
+    await interaction.reply(content);
+    return;
+  }
+
+  if (commandName === 'duel') {
+    const bet = interaction.options.getInteger('bet');
+    const target = interaction.options.getUser('user');
+    const user = store.getUser(interaction.user.id, { create: true, start: CARL_COIN_START });
+    if (!bet || bet < 1) {
+      await interaction.reply('Put a real bet down, at least 1 coin.');
+      return;
+    }
+    if (bet > user.coins) {
+      await interaction.reply(`You got ${user.coins} Carl Coins. Can't bet ${bet}, ya broke bastard.`);
+      return;
+    }
+    if (target.id === interaction.user.id) {
+      await interaction.reply("You can't duel yourself, dumbass.");
+      return;
+    }
+    if (target.bot) {
+      await interaction.reply("You can't duel a bot. Fight a real person.");
+      return;
+    }
+    if (!store.takeCoins(interaction.user.id, bet)) {
+      await interaction.reply("Can't afford it. Go claim your daily.");
+      return;
+    }
+    const id = `d${++duelCounter}_${interaction.channel.id}_${target.id}`;
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`duel_accept:${id}`).setLabel('ACCEPT THE DUEL').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`duel_decline:${id}`).setLabel('BACK OUT').setStyle(ButtonStyle.Danger)
+    );
+    duels.set(id, { kind: 'coin', challenger: interaction.user.id, target: target.id, bet, channelId: interaction.channel.id });
+    await interaction.reply({
+      content: `**DUEL CHALLENGE!** ${interaction.user} is challenegin' ${target} to a coin duel for **${bet} coins each**. Winner takes the pot. You got 60 seconds, ${target}.`,
+      components: [row],
+    });
+    setTimeout(() => {
+      if (duels.has(id)) {
+        duels.delete(id);
+        store.addCoins(interaction.user.id, bet);
+        interaction
+          .editReply("Duel expired. Nobody showed up. Money's back.")
+          .catch(() => {});
+      }
+    }, 60000);
+    return;
+  }
+
+  if (commandName === 'trivia') {
+    const category = interaction.options.getString('category') || 'any';
+    const q = trivia.pickQuestion(category);
+    const labels = ['A', 'B', 'C', 'D'];
+    const content = `**CARL'S TRIVIA (${category})**\n${q.q}\nFirst correct answer banks **${TRIVIA_REWARD} coins**. Wrong answers cost ${TRIVIA_PENALTY}.`;
+    const key = interaction.channel.id;
+    triviaGames.set(key, { q, category });
+    await interaction.reply({ content, components: triviaButtons(q) });
+    setTimeout(async () => {
+      if (triviaGames.has(key)) {
+        triviaGames.delete(key);
+        try {
+          const msg = await interaction.fetchReply();
+          if (msg.components.length) {
+            await interaction.editReply({
+              content: `**CARL'S TRIVIA (${category})**\n${q.q}\n\nTime's up. Answer was **${labels[q.answer]}: ${q.options[q.answer]}**. Buncha slowpokes.`,
+              components: [],
+            });
+          }
+        } catch {
+          /* whatever */
+        }
+      }
+    }, 30000);
+    return;
+  }
+
+  if (commandName === 'cah') {
+    if (cahGames.has(interaction.channel.id)) {
+      await interaction.reply("There's already a game goin here. Join it or wait.");
+      return;
+    }
+    const deck = cah.newDeck();
+    const game = {
+      channelId: interaction.channel.id,
+      hostId: interaction.user.id,
+      players: [
+        {
+          id: interaction.user.id,
+          username: interaction.user.username,
+          score: 0,
+          hand: [],
+        },
+      ],
+      winners: [],
+      deck: { blacks: cah.shuffle(deck.blacks), whites: cah.shuffle(deck.whites) },
+      round: 0,
+      czarIdx: 0,
+      blackCard: null,
+      submissions: new Map(),
+      revealed: [],
+      phase: 'lobby',
+    };
+    cahGames.set(interaction.channel.id, game);
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cah_join').setLabel('JOIN').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cah_start').setLabel('START GAME').setStyle(ButtonStyle.Success)
+    );
+    await interaction.reply({ content: cahLobbyContent(game), components: [row] });
     return;
   }
 

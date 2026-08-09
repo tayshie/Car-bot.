@@ -109,6 +109,136 @@ const commands = [
     description: 'Richest bastards in the server',
   },
   {
+    name: 'blackjack',
+    description: 'Play blackjack against Carl (or with friends)',
+    options: [
+      {
+        name: 'bet',
+        description: 'Carl Coins to wager',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'opponent1',
+        description: 'Optional player 2 at the table',
+        type: 6,
+        required: false,
+      },
+      {
+        name: 'opponent2',
+        description: 'Optional player 3 at the table',
+        type: 6,
+        required: false,
+      },
+      {
+        name: 'opponent3',
+        description: 'Optional player 4 at the table',
+        type: 6,
+        required: false,
+      },
+    ],
+  },
+  {
+    name: 'slots',
+    description: 'Spin the Carl Coin slot machine',
+    options: [
+      {
+        name: 'bet',
+        description: 'Carl Coins to wager',
+        type: 4,
+        required: true,
+      },
+    ],
+  },
+  {
+    name: 'dice',
+    description: 'Roll dice against Carl or another member',
+    options: [
+      {
+        name: 'bet',
+        description: 'Carl Coins to wager',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'opponent',
+        description: 'Challenge a member instead of Carl',
+        type: 6,
+        required: false,
+      },
+    ],
+  },
+  {
+    name: 'coin',
+    description: 'Flip a coin against Carl or another member',
+    options: [
+      {
+        name: 'bet',
+        description: 'Carl Coins to wager',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'call',
+        description: 'Heads or tails',
+        type: 3,
+        required: false,
+        choices: [
+          { name: 'Heads', value: 'heads' },
+          { name: 'Tails', value: 'tails' },
+        ],
+      },
+      {
+        name: 'opponent',
+        description: 'Challenge a member instead of Carl',
+        type: 6,
+        required: false,
+      },
+    ],
+  },
+  {
+    name: 'duel',
+    description: 'Challenge a member to a coin duel',
+    options: [
+      {
+        name: 'bet',
+        description: 'Carl Coins each side stakes',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'user',
+        description: 'Who you challengin?',
+        type: 6,
+        required: true,
+      },
+    ],
+  },
+  {
+    name: 'trivia',
+    description: 'Carl trivia - win coins, lose dignity',
+    options: [
+      {
+        name: 'category',
+        description: 'Pick a category',
+        type: 3,
+        required: false,
+        choices: [
+          { name: 'Any', value: 'any' },
+          { name: 'Adult Swim', value: 'adult swim' },
+          { name: 'Classic Rock', value: 'classic rock' },
+          { name: 'Juggalo', value: 'juggalo' },
+          { name: 'Sports', value: 'sports' },
+          { name: 'General', value: 'general' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'cah',
+    description: "Start a game of Carl's Cards (Cards Against Humanity style)",
+  },
+  {
     name: 'search',
     description: 'Web search, Carl style',
     options: [
