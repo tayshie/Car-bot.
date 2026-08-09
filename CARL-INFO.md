@@ -15,6 +15,15 @@ Hey. Carl here. 2 Wycked's in the shop, Foreigner's on the stereo, and I've been
 - /leaderboard — who's the richest bastard in the server
 - Sports: NFL, NBA, MLB, UFC/MMA
 
+**GAMES (all for Carl Coins)**
+- /blackjack <bet> [opponent] x3 — hit/stand/double against me, or bring up to 3 friends to one table
+- /slots <bet> — pull the lever, win big or lose bigger
+- /dice <bet> [@opponent] — roll against me, or bet a friend and winner takes the pot
+- /coin <bet> [heads/tails] [@opponent] — same deal, but with a coin
+- /duel <bet> <@user> — challenge somebody, coin flip, winner takes it all
+- /trivia [category] — answer right, bank coins; answer wrong, I take 'em (adult swim, classic rock, juggalo, sports, general)
+- /cah — Carl's Cards. Cards Against Humanity but meth-flavored. Join the lobby, cards get DM'd private, the Card Czar picks the funniest (worst) one
+
 **CALLING PEOPLE OUT**
 - /shade [@user] — I secretly roast somebody and it looks like I did it out of nowhere (only you see the trigger, I ping 'em)
 - /lookup <topic or name> — I dig through server history and tell you what people been sayin'

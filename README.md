@@ -22,6 +22,13 @@ Carl's a server insider. He watches everything, remembers everything, bets on ga
 - **Carl Coin Economy**: Persistent balances, daily claims, leaderboard
 - **Betting**: Place bets with Carl Coins, auto-settled from real game results, winners DM'd
 
+### Games (Carl Coins)
+- **Blackjack** — hit/stand/double vs Carl the dealer, or play up to 4 people at one table against the same dealer
+- **Slots / Dice / Coin** — quick gambles vs Carl, or challenge a member to a PvP pot via accept/decline buttons
+- **Duel** — challenge a member to a coin flip, winner takes the pot
+- **Trivia** — channel-wide quiz (Adult Swim, Classic Rock, Juggalo, Sports, General). Correct answers bank coins, wrong answers cost coins
+- **Carl's Cards** — a Cards Against Humanity clone. Lobby with join/start buttons, cards DM'd privately, rotating Card Czar picks the winner. Deck is entirely meth-themed because of course it is
+
 ### Server Tools
 - **/shade [@user]** — secret command (ephemeral). Carl publicly roasts and pings people so it looks random. Only the caller sees the trigger.
 - **/lookup** — search recent server history for people/events
@@ -212,6 +219,8 @@ All data is local and excluded from git via `.gitignore`.
 | `RESOLVE_MINUTES` | No | How often to settle bets (default 5) |
 | `GOSSIP_MIN_HOURS` | No | Min hours between gossip drops (default 2) |
 | `GOSSIP_MAX_HOURS` | No | Max hours between gossip drops (default 6) |
+| `TRIVIA_REWARD` | No | Coins banked for a correct trivia answer (default 100) |
+| `TRIVIA_PENALTY` | No | Coins lost for a wrong trivia answer (default 25) |
 | `LORE_CHANNEL_LIMIT` | No | Max stored messages per channel (default 40) |
 | `LORE_USER_LIMIT` | No | Max stored messages per user (default 20) |
 | `LORE_TOTAL_LIMIT` | No | Max total stored messages (default 5000) |
